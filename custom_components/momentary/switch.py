@@ -21,12 +21,17 @@ from . import ( DOMAIN )
 
 _LOGGER = logging.getLogger(__name__)
 
+ALLOW_OFF = False
+ON_FOR_DEFAULT = 1
+
 CONF_NAME = "name"
 CONF_ON_FOR = "on_for"
+CONF_ALLOW_OFF = "allow_off"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required( CONF_NAME ): cv.string,
-    vol.Required( CONF_ON_FOR ): vol.All(cv.time_period, cv.positive_timedelta),
+    vol.Required(CONF_NAME): cv.string,
+    vol.Optional(CONF_ON_FOR,ON_FOR_DEFAULT): vol.All(cv.time_period, cv.positive_timedelta),
+    vol.Optional(CONF_ALLOW_OFF, default=ALLOW_OFF): cv.boolean,
 })
 
 async def async_setup_platform(hass, config, async_add_entities, _discovery_info=None):
@@ -41,8 +46,9 @@ class MomentarySwitch(SwitchDevice):
     def __init__(self, config ):
         """Initialize the Momentary switch device."""
         self._name = config.get( CONF_NAME )
-        self._unique_id = self._name.lower().replace(' ', '_')
         self._on_for = config.get( CONF_ON_FOR )
+        self._allow_off = config.get( CONF_ALLOW_OFF )
+        self._unique_id = self._name.lower().replace(' ', '_')
         self._on_until = None
         _LOGGER.info('MomentarySwitch: {} created'.format(self._name))
 
@@ -75,5 +81,8 @@ class MomentarySwitch(SwitchDevice):
 
     def turn_off(self, **kwargs):
         """Turn the switch off."""
-        pass
+        if self._allow_off:
+            self._on_until = None
+            _LOGGER.debug( 'forced off' )
+        self.async_schedule_update_ha_state()
 

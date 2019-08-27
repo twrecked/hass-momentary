@@ -15,3 +15,4 @@ def setup(hass, config):
     """Set up an momentary component."""
     _LOGGER.debug( 'setup' )
     return True
+
