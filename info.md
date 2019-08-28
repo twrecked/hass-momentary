@@ -6,3 +6,5 @@ It provides:
 * User configurable on time.
 * Allow switch to be turned off early.
 
+## Documentation
+See [here](https://github.com/twrecked/hass-momentary/blob/master/README.md) for full documentation.
