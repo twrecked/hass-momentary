@@ -1,0 +1,8 @@
+{
+  "domain": "momentary",
+  "name": "Momentaty Switch Component",
+  "documentation": "https://github.com/twrecked/hass-momentary/blob/master/README.md",
+  "dependencies": [],
+  "codeowners": ["@sherrell"],
+  "requirements": []
+}
