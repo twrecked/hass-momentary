@@ -11,8 +11,8 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'momentary'
 
-def setup(hass, config):
-    """Set up an momentary component."""
-    _LOGGER.debug( 'setup' )
-    return True
 
+def setup(_hass, _config):
+    """Set up an momentary component."""
+    _LOGGER.debug('setup')
+    return True
