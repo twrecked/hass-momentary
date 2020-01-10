@@ -79,5 +79,6 @@ switch:
   - platform: momentary
     name: Bad Weather Trigger
     mode: off
-    toggle_for: 1
+    toggle_for:
+      milliseconds: 500
 ```
