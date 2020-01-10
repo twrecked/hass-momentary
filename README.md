@@ -1,6 +1,9 @@
 # hass-momentary
 ### Momentary Switch Component for Home Assistant
-A simple switch component that once turned on will turn itself off. 
+A simple switch component that once turned on will turn itself off.
+
+### NOTES!
+This release includes a `mode` configuration allowing the switch to be momentarily on or off. Existing configurations will work with the new code but use the new configuration going forward.
 
 ## Table Of Contents
 1. [Notes](#Notes)
@@ -28,7 +31,7 @@ Momentary is going to be part of the default HACS store. If you're not intereste
 Copy the `momentary`directory into your `/config/custom_components` directory.
 
 ### From Script
-Run the install script. Run it once to make sure the operations look sane and run it a second time with the `go` paramater to do the actual work. If you update just rerun the script, it will overwrite all installed files.
+Run the install script. Run it once to make sure the operations look sane and run it a second time with the `go` parameter to do the actual work. If you update just rerun the script, it will overwrite all installed files.
 
 ```sh
 install /config
@@ -43,14 +46,15 @@ Add the following to your `configuration.yaml` to enable the component:
 momentary:
 ```
 
-To create a switch use the following:
+To create a momentary on switch use the following:
 
 ```yaml
 switch:
   - platform: momentary
     name: Empty House Trigger
-    on_for: 5
-    allow_off: True
+    mode: on
+    toggle_for: 5
+    cancellable: True
 ```
 
 The following additional parameters can be specified against the switches:
@@ -58,8 +62,11 @@ The following additional parameters can be specified against the switches:
 | Field                 | Type     | Default          | Description                       
 |-----------------------|----------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | name                  | strings  |                  | Name of the switch. Has to be supplied.                                                                                                                                                                                                     |
-| on_for                | seconds  | 1                | Amount of time to turn the switch on for.                                                                                                                                                                                                   |
-| allow_off             | Boolean  | False            | Allow switched to be turned off manually.                                                                                                                                                                                                   |
+| mode                  | string  | on                | Is the switch a momentary ON or OFF switch. Use `on` for on and `off` for off.                                                                                                                                                                                                   |
+| toggle_for            | seconds  | 1                | Amount of time to turn toggle switch for.                                                                                                                                                                                                   |
+| cancellable           | Boolean  | False            | Allow switched to be untoggled manually.                                                                                                                                                                                                   |
+| on_for                | seconds  | 1                | DEPRECATED Amount of time to turn the switch on for.                                                                                                                                                                                                   |
+| allow_off             | Boolean  | False            | DEPRECATED Allow switched to be turned off manually.                                                                                                                                                                                                   |
 
 To add multiple switches repeat the whole component configuration:
 
@@ -67,6 +74,10 @@ To add multiple switches repeat the whole component configuration:
 switch:
   - platform: momentary
     name: Empty House Trigger
+    mode: on
+    toggle_for: 5
   - platform: momentary
     name: Bad Weather Trigger
+    mode: off
+    toggle_for: 1
 ```
