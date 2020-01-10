@@ -46,14 +46,15 @@ Add the following to your `configuration.yaml` to enable the component:
 momentary:
 ```
 
-To create a switch use the following:
+To create a momentary on switch use the following:
 
 ```yaml
 switch:
   - platform: momentary
     name: Empty House Trigger
-    on_for: 5
-    allow_off: True
+    mode: on
+    toggle_for: 5
+    cancellable: True
 ```
 
 The following additional parameters can be specified against the switches:
