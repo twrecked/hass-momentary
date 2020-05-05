@@ -2,7 +2,9 @@
 A simple switch component that once turned on will turn itself off. 
 
 ### NOTES!
-This release includes a mode configuration allowing the switch to be momentarily on or off. Existing configurations will work with the new code but use the new configuration going forward.
+This release includes a mode configuration allowing the switch to be momentarily
+on or off. Existing configurations will work with the new code but use the new
+configuration going forward.
 
 ## Features
 It provides:
