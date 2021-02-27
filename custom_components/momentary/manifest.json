@@ -4,5 +4,6 @@
   "documentation": "https://github.com/twrecked/hass-momentary/blob/master/README.md",
   "dependencies": [],
   "codeowners": ["@sherrell"],
-  "requirements": []
+  "requirements": [],
+  "version": "0.5.1"
 }

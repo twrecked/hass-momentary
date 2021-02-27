@@ -1,4 +1,4 @@
-
+0.5.1: fixed Home Assistant breaking change
 0.4: add mode, allow device to turn off momentarily
 0.3: code tidy, fixed is_on
 
