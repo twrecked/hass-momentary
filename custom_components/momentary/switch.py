@@ -49,8 +49,14 @@ class MomentarySwitch(SwitchEntity):
     def __init__(self, config):
         """Initialize the Momentary switch device."""
         self._name = config.get(CONF_NAME)
-        self._mode = config.get(CONF_MODE)
+
+        # Are we adding the domain or not?
+        self.no_domain_ = self._name.startswith("!")
+        if self.no_domain_:
+            self._name = self.name[1:]
         self._unique_id = self._name.lower().replace(' ', '_')
+
+        self._mode = config.get(CONF_MODE)
         self._toggle_until = None
 
         # Old configuration - only turns on
@@ -74,6 +80,13 @@ class MomentarySwitch(SwitchEntity):
             _LOGGER.debug('new config, turning {}'.format(self._toggled))
 
         _LOGGER.info('MomentarySwitch: {} created'.format(self._name))
+
+    @property
+    def name(self):
+        if self.no_domain_:
+            return self._name
+        else:
+            return super().name
 
     @property
     def unique_id(self):

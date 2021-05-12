@@ -94,3 +94,19 @@ switch:
     toggle_for:
       milliseconds: 500
 ```
+
+
+## Naming
+
+By default, the code creates entities with `momentary` as part of their name.
+`Switch 1` in the previous example will give an entity of
+`switch.momentary_switch_1`. If you don't want the `momentary_` prefix add a `!`
+to the device name. For example:
+
+```yaml
+switch:
+  - platform: momentary
+    name: !Switch 1
+```
+
+
