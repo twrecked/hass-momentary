@@ -1,4 +1,5 @@
+0.5.3: fix device attribute issue
+0.5.2: make momentary prefix optional
 0.5.1: fixed Home Assistant breaking change
 0.4: add mode, allow device to turn off momentarily
 0.3: code tidy, fixed is_on
-
