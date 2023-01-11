@@ -1,4 +1,5 @@
 # hass-momentary
+
 ### Momentary Switch Component for Home Assistant
 A simple switch component that once turned on will turn itself off.
 
@@ -6,6 +7,7 @@ A simple switch component that once turned on will turn itself off.
 This release includes a `mode` configuration allowing the switch to be
 momentarily on or off. Existing configurations will work with the new code but
 use the new configuration going forward.
+
 
 ## Table Of Contents
 1. [Notes](#Notes)
@@ -16,10 +18,12 @@ use the new configuration going forward.
    1. [From Script](#From-Script)
 1. [Component Configuration](#Component-Configuration)
 
+
 ## Notes
 Wherever you see `/config` in this README it refers to your home-assistant
 configuration directory. For me, for example, it's `/home/steve/ha` that is
 mapped to `/config` inside my docker container.
+
 
 ## Thanks
 Many thanks to:
@@ -51,6 +55,7 @@ install /config
 install go /config
 ```
 
+
 ## Component Configuration
 Add the following to your `configuration.yaml` to enable the component:
 
@@ -71,14 +76,12 @@ switch:
 
 The following additional parameters can be specified against the switches:
 
-| Field                   | Type       | Default            | Description
-| ----------------------- | ---------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| name                    | strings    |                    | Name of the switch. Has to be supplied.                                                                                                                                                                                                     |
-| mode                    | string     | on                 | Is the switch a momentary ON or OFF switch. Use `on` for on and `off` for off.                                                                                                                                                              |
-| toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                                                                                                                                                                                   |
-| cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                                                                                                                                                                                    |
-| on_for                  | seconds    | 1                  | DEPRECATED Amount of time to turn the switch on for.                                                                                                                                                                                        |
-| allow_off               | Boolean    | False              | DEPRECATED Allow switched to be turned off manually.                                                                                                                                                                                        |
+| Field                   | Type       | Default            | Description                                                                     |
+| ----------------------- | ---------- | ------------------ | ------------------------------------------------------------------------------- |
+| name                    | strings    |                    | Name of the switch. Has to be supplied.                                         |
+| mode                    | string     | on                 | Is the switch a momentary ON or OFF switch. Use `on` for on and `off` for off.  |
+| toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                       |
+| cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                        |
 
 To add multiple switches repeat the whole component configuration:
 

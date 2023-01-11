@@ -5,11 +5,11 @@ This component provides support for a momentary switch.
 
 import logging
 
-__version__ = '0.5.3'
+__version__ = '0.6.1'
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = 'momentary'
+COMPONENT_DOMAIN = 'momentary'
 
 
 def setup(_hass, _config):

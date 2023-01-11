@@ -1,11 +1,10 @@
 #!/bin/bash
-#
 
 if [[ "${1}" == "go" ]]; then
 	ECHO=
 	shift
 else
-	ECHO=echo
+	ECHO="echo"
 fi
 
 DEST="${1}"
@@ -29,3 +28,4 @@ else
 	${ECHO} cp -afv custom_components/momentary "${DEST}/custom_components"
 fi
 
+echo -- finished at "$(date '+%A at %H:%M:%S')"
