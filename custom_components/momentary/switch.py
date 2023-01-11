@@ -24,6 +24,8 @@ DEFAULT_MODE = "old"
 DEFAULT_CANCELLABLE = False
 TOGGLE_FOR_DEFAULT = timedelta(seconds=1)
 
+ATTR_IDLE_STATE = 'idle_state'
+ATTR_TIMED_STATE = 'timed_state'
 ATTR_UNIQUE_ID = 'unique_id'
 
 CONF_NAME = "name"
@@ -77,7 +79,7 @@ class MomentarySwitch(SwitchEntity):
         self._cancellable = config.get(CONF_ALLOW_OFF)
 
         # Old configuration - only turns on
-        if self._mode == "old":
+        if self._mode.lower() == DEFAULT_MODE:
             _LOGGER.debug(f'old config, idle-state={self._idle_state}')
 
         # New configuration - can be either turn off or on.
@@ -92,8 +94,8 @@ class MomentarySwitch(SwitchEntity):
 
         # Set up some attributes.
         self._attr_extra_state_attributes = {
-            "idle_state": self._idle_state,
-            "timed_state": self._timed_state,
+            ATTR_IDLE_STATE: self._idle_state,
+            ATTR_TIMED_STATE: self._timed_state,
         }
         if _LOGGER.isEnabledFor(logging.DEBUG):
             self._attr_extra_state_attributes.update({
