@@ -84,7 +84,7 @@ class MomentarySwitch(SwitchEntity):
 
         # New configuration - can be either turn off or on.
         else:
-            if self._mode.lower() != "off":
+            if self._mode.lower() == "off":
                 self._idle_state = True
                 self._timed_state = False
             _LOGGER.debug(f'new config, idle-state={self._idle_state}')
