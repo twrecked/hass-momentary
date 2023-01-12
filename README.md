@@ -69,31 +69,35 @@ To create a momentary on switch use the following:
 switch:
   - platform: momentary
     name: Empty House Trigger
-    mode: on
+    mode: "on"
     toggle_for: 5
     cancellable: True
 ```
 
 The following additional parameters can be specified against the switches:
 
-| Field                   | Type       | Default            | Description                                                                     |
-| ----------------------- | ---------- | ------------------ | ------------------------------------------------------------------------------- |
-| name                    | strings    |                    | Name of the switch. Has to be supplied.                                         |
-| mode                    | string     | on                 | Is the switch a momentary ON or OFF switch. Use `on` for on and `off` for off.  |
-| toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                       |
-| cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                        |
+| Field                   | Type       | Default            | Description                                                                        |
+| ----------------------- | ---------- | ------------------ | -------------------------------------------------------------------------------    |
+| name                    | strings    |                    | Name of the switch. Has to be supplied.                                            |
+| mode                    | string     | "on"               | Is the switch a momentary ON or OFF switch. Use `"on"` for on and `"off"` for off. |
+| toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                          |
+| cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                           |
 
 To add multiple switches repeat the whole component configuration:
+
+_`"on"` and `"off"` needs quotes around them to differentiate them from True and
+False._
+
 
 ```yaml
 switch:
   - platform: momentary
     name: Empty House Trigger
-    mode: on
+    mode: "on"
     toggle_for: 5
   - platform: momentary
     name: Bad Weather Trigger
-    mode: off
+    mode: "on"
     toggle_for:
       milliseconds: 500
 ```
