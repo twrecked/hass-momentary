@@ -85,9 +85,6 @@ The following additional parameters can be specified against the switches:
 
 To add multiple switches repeat the whole component configuration:
 
-_`"on"` and `"off"` needs quotes around them to differentiate them from True and
-False._
-
 
 ```yaml
 switch:

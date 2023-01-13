@@ -30,16 +30,12 @@ ATTR_UNIQUE_ID = 'unique_id'
 
 CONF_NAME = "name"
 CONF_MODE = "mode"
-CONF_ON_FOR = "on_for"
-CONF_ALLOW_OFF = "allow_off"
 CONF_TOGGLE_FOR = "toggle_for"
 CONF_CANCELLABLE = "cancellable"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_MODE, default=DEFAULT_MODE): cv.string,
-    vol.Optional(CONF_ON_FOR, default=TOGGLE_FOR_DEFAULT): vol.All(cv.time_period, cv.positive_timedelta),
-    vol.Optional(CONF_ALLOW_OFF, default=DEFAULT_CANCELLABLE): cv.boolean,
     vol.Optional(CONF_TOGGLE_FOR, default=TOGGLE_FOR_DEFAULT): vol.All(cv.time_period, cv.positive_timedelta),
     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
 })
@@ -75,16 +71,17 @@ class MomentarySwitch(SwitchEntity):
 
         # Get settings.
         self._mode = config.get(CONF_MODE)
-        self._toggle_for = config.get(CONF_ON_FOR)
-        self._cancellable = config.get(CONF_ALLOW_OFF)
+        self._toggle_for = config.get(CONF_TOGGLE_FOR)
+        self._cancellable = config.get(CONF_CANCELLABLE)
 
         # Old configuration - only turns on
         if self._mode.lower() == DEFAULT_MODE:
             _LOGGER.debug(f'old config, idle-state={self._idle_state}')
 
-        # New configuration - can be either turn off or on.
+        # New configuration - can be either turn off or on. Base on or off are
+        # converted to True and False. We need to handle those.
         else:
-            if self._mode.lower() == "off":
+            if self._mode.lower() in ['off', 'false']:
                 self._idle_state = True
                 self._timed_state = False
             _LOGGER.debug(f'new config, idle-state={self._idle_state}')
@@ -105,7 +102,7 @@ class MomentarySwitch(SwitchEntity):
 
         _LOGGER.info(f'MomentarySwitch: {self.name} created')
 
-    def _stop_activity(self, time_left):
+    def _stop_activity(self, _time_left):
         _LOGGER.debug(f"moving {self.name} out of timed state")
         self._attr_is_on = self._idle_state
         self.async_schedule_update_ha_state()
