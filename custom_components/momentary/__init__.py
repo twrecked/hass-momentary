@@ -5,7 +5,7 @@ This component provides support for a momentary switch.
 
 import logging
 
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 
 _LOGGER = logging.getLogger(__name__)
 
