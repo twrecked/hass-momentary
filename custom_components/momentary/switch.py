@@ -7,6 +7,7 @@ import logging
 import pprint
 from datetime import datetime, timedelta
 from typing import Any
+from collections.abc import Callable
 
 import voluptuous as vol
 
@@ -62,6 +63,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
     _toggle_until: datetime = DEFAULT_TOGGLE_UNTIL
     _idle_state: bool = False
     _timed_state: bool = True
+    _timer: Callable[[], None] | None = None
 
     def __init__(self, config):
         """Initialize the Momentary switch device."""
@@ -108,7 +110,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         if self._toggle_until > dt_util.utcnow():
             _LOGGER.debug(f"restoring {self.name} to timed state")
             self._attr_is_on = self._timed_state
-            async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+            self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
         else:
             _LOGGER.debug(f"restoring {self.name} to off state")
             self._attr_is_on = self._idle_state
@@ -146,11 +148,12 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
                 _LOGGER.debug(f"moving {self.name} out of timed state")
                 self._attr_is_on = self._idle_state
                 self._toggle_until = DEFAULT_TOGGLE_UNTIL
+                self._timer = None
                 self._update_attributes()
                 self.async_schedule_update_ha_state()
             else:
                 _LOGGER.debug(f"too soon, restarting {self.name} timer")
-                async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+                self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
         else:
             _LOGGER.debug(f"{self.name} already idle")
 
@@ -164,14 +167,17 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             _LOGGER.debug(f"(re)moving {self.name} to timed state")
             self._attr_is_on = self._timed_state
             self._toggle_until = dt_util.utcnow() + self._toggle_for
-            async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+            self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
 
         # Are we cancelling an timed state? And are we allowed. Then turn it
         # back now, the timer can run without causing a problem.
         elif self._cancellable:
             _LOGGER.debug(f"cancelling timed state for {self.name}")
+            if self._timer is not None:
+                self._timer()
             self._attr_is_on = self._idle_state
             self._toggle_until = DEFAULT_TOGGLE_UNTIL
+            self._timer = None
 
         # Make sure system gets updated.
         self._update_attributes()
