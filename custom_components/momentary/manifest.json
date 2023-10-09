@@ -1,4 +1,5 @@
 {
+  "config_flow": true,
   "domain": "momentary",
   "name": "Momentary Switch Component",
   "documentation": "https://github.com/twrecked/hass-momentary/blob/master/README.md",

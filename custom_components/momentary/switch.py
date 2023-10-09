@@ -5,6 +5,7 @@ This component provides support for a momentary switch.
 
 import logging
 import pprint
+import json
 from datetime import datetime, timedelta
 from typing import Any
 from collections.abc import Callable
@@ -13,12 +14,19 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
+from homeassistant.helpers import device_registry
 from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.switch import SwitchEntity, DOMAIN
 from homeassistant.helpers.config_validation import (PLATFORM_SCHEMA)
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.typing import HomeAssistantType
 
 from . import COMPONENT_DOMAIN
 
@@ -49,14 +57,43 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(_hass, config, async_add_entities, _discovery_info=None):
-    switches = [MomentarySwitch(config)]
-    async_add_entities(switches, True)
+# async def async_setup_platform(hass, config, async_add_entities, _discovery_info=None):
+#     switches = [MomentarySwitch(config, hass)]
+#     async_add_entities(switches, True)
+
+# def setup_platform(
+#         hass: HomeAssistant,
+#         config: ConfigType,
+#         add_entities: AddEntitiesCallback,
+#         discovery_info: DiscoveryInfoType | None = None
+# ) -> None:
+#     switches = [MomentarySwitch(config, hass)]
+#     add_entities(switches, True)
+
+
+async def async_setup_entry(
+        hass: HomeAssistantType,
+        entry: ConfigEntry,
+        async_add_entities: Callable[[list], None],
+) -> None:
+    _LOGGER.info("setting up the entries...")
+
+    # create entities
+    entities = []
+    switches = hass.data[COMPONENT_DOMAIN]['switches']
+    for switch in entry.data.get('switches', {}):
+        if switch in switches:
+            _LOGGER.info(f"would try to add {switch}")
+            _LOGGER.info(f"would try to add {switches[switch]}")
+            entities.append(MomentarySwitch(switch, switches[switch], hass))
+
+    async_add_entities(entities)
 
 
 class MomentarySwitch(RestoreEntity, SwitchEntity):
     """Representation of a Momentary switch."""
 
+    _uuid: str = ""
     _mode: str = DEFAULT_MODE
     _cancellable: bool = DEFAULT_CANCELLABLE
     _toggle_for: timedelta = TOGGLE_FOR_DEFAULT
@@ -64,25 +101,23 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
     _idle_state: bool = False
     _timed_state: bool = True
     _timer: Callable[[], None] | None = None
+    _hass = None
 
-    def __init__(self, config):
+    def __init__(self, uuid, config, hass):
         """Initialize the Momentary switch device."""
 
-        # Build name, entity id and unique id. We do this because historically
-        # the non-domain piece of the entity_id was prefixed with virtual_ so
-        # we build the pieces manually to make sure.
-        self._attr_name = config.get(CONF_NAME)
-        if self._attr_name.startswith("!"):
-            self._attr_name = self._attr_name[1:]
-            self.entity_id = f'{DOMAIN}.{slugify(self._attr_name)}'
-        else:
-            self.entity_id = f'{DOMAIN}.{COMPONENT_DOMAIN}_{slugify(self._attr_name)}'
-        self._attr_unique_id = slugify(self._attr_name)
+        self._hass = hass
+        self._uuid = uuid
+        _LOGGER.debug(f'{config}')
+
+        self._attr_name = config.get('name')
+        self.entity_id = config['entity_id']
+        self._attr_unique_id = config.get('original_unique_id', f'{uuid}.momentary')
 
         # Get settings.
-        self._mode = config.get(CONF_MODE)
-        self._toggle_for = config.get(CONF_TOGGLE_FOR)
-        self._cancellable = config.get(CONF_CANCELLABLE)
+        self._mode = config.get(CONF_MODE, DEFAULT_MODE)
+        self._toggle_for = config.get(CONF_TOGGLE_FOR, TOGGLE_FOR_DEFAULT)
+        self._cancellable = config.get(CONF_CANCELLABLE, DEFAULT_CANCELLABLE)
 
         # Old configuration - only turns on
         if self._mode.lower() == DEFAULT_MODE:
@@ -97,6 +132,12 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             _LOGGER.debug(f'new config, idle-state={self._idle_state}')
 
         _LOGGER.info(f'MomentarySwitch: {self.name} created')
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(COMPONENT_DOMAIN, uuid)},
+            manufacturer="twrecked",
+            model="momentary",
+        )
 
     def _create_state(self):
         _LOGGER.info(f'Momentary {self.unique_id}: creating initial state')
@@ -136,6 +177,17 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         else:
             self._restore_state(state)
         self._update_attributes()
+
+        # _LOGGER.info(f'MomentarySwitch: device info2')
+        # dr = device_registry.async_get(self._hass)
+        # dr.async_get_or_create(
+        #     config_entry_id=self.entry_id,
+        #     identifiers={(COMPONENT_DOMAIN, self.unique_id)},
+        #     manufacturer="twrecked",
+        #     model="Momentary",
+        #     name=self.name,
+        # )
+        # _LOGGER.info(f'MomentarySwitch: device info2')
 
     async def _async_stop_activity(self, *_args: Any) -> None:
         """ Turn the switch to idle state.
