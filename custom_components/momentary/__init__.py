@@ -14,7 +14,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 import homeassistant.helpers.device_registry as dr
 
-__version__ = '0.6.3'
+__version__ = '0.7.0a1'
 
 _LOGGER = logging.getLogger(__name__)
 
