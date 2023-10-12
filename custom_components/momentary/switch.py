@@ -13,17 +13,19 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
-from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.switch import SwitchEntity, DOMAIN
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ENTITY_ID, CONF_NAME
+from homeassistant.core import HassJob
 from homeassistant.helpers.config_validation import (PLATFORM_SCHEMA)
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
     ATTR_IDLE_STATE,
+    ATTR_SWITCHES,
     ATTR_TIMED_STATE,
     ATTR_TOGGLE_UNTIL,
     ATTR_UNIQUE_ID,
@@ -35,6 +37,8 @@ from .const import (
     DEFAULT_MODE,
     DEFAULT_TOGGLE_FOR,
     DOMAIN,
+    MANUFACTURER,
+    MODEL
 )
 
 
@@ -50,15 +54,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
 })
 
-# DB_SCHEMA = PLATFORM_SCHEMA.extend({
-#     vol.Required(CONF_NAME): cv.string,
-#     vol.Required("entity_id"): cv.string,
-#     vol.Required("original_unique_id"): cv.string,
-#     vol.Optional(CONF_MODE, default=DEFAULT_MODE): cv.string,
-#     vol.Optional(CONF_TOGGLE_FOR, default=DEFAULT_TOGGLE_FOR): vol.All(cv.time_period, cv.positive_timedelta),
-#     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
-# })
-
 
 async def async_setup_entry(
         hass: HomeAssistantType,
@@ -69,8 +64,8 @@ async def async_setup_entry(
 
     # create entities
     entities = []
-    switches = hass.data[DOMAIN]['switches']
-    for switch in entry.data.get('switches', {}):
+    switches = hass.data[DOMAIN][ATTR_SWITCHES]
+    for switch in entry.data.get(ATTR_SWITCHES, {}):
         if switch in switches:
             _LOGGER.info(f"would try to add {switch}")
             _LOGGER.info(f"would try to add {switches[switch]}")
@@ -99,8 +94,8 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         self._uuid = uuid
         _LOGGER.debug(f'{config}')
 
-        self._attr_name = config.get('name')
-        self.entity_id = config['entity_id']
+        self._attr_name = config.get(CONF_NAME)
+        self.entity_id = config[ATTR_ENTITY_ID]
         self._attr_unique_id = uuid
 
         # Get settings.
@@ -124,8 +119,8 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, uuid)},
-            manufacturer="twrecked",
-            model="momentary",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
         )
 
     def _create_state(self):
@@ -140,7 +135,13 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         if self._toggle_until > dt_util.utcnow():
             _LOGGER.debug(f"restoring {self.name} to timed state")
             self._attr_is_on = self._timed_state
-            self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+            self._timer = async_track_point_in_time(
+                self.hass,
+                HassJob(
+                    self._async_stop_activity
+                ),
+                self._toggle_until
+            )
         else:
             _LOGGER.debug(f"restoring {self.name} to off state")
             self._attr_is_on = self._idle_state
@@ -167,17 +168,6 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             self._restore_state(state)
         self._update_attributes()
 
-        # _LOGGER.info(f'MomentarySwitch: device info2')
-        # dr = device_registry.async_get(self._hass)
-        # dr.async_get_or_create(
-        #     config_entry_id=self.entry_id,
-        #     identifiers={(COMPONENT_DOMAIN, self.unique_id)},
-        #     manufacturer="twrecked",
-        #     model="Momentary",
-        #     name=self.name,
-        # )
-        # _LOGGER.info(f'MomentarySwitch: device info2')
-
     async def _async_stop_activity(self, *_args: Any) -> None:
         """ Turn the switch to idle state.
         Before doing that make sure:
@@ -194,7 +184,13 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
                 self.async_schedule_update_ha_state()
             else:
                 _LOGGER.debug(f"too soon, restarting {self.name} timer")
-                self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+                self._timer = async_track_point_in_time(
+                    self.hass,
+                    HassJob(
+                        self._async_stop_activity
+                    ),
+                    self._toggle_until
+                )
         else:
             _LOGGER.debug(f"{self.name} already idle")
 
@@ -208,7 +204,13 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             _LOGGER.debug(f"(re)moving {self.name} to timed state")
             self._attr_is_on = self._timed_state
             self._toggle_until = dt_util.utcnow() + self._toggle_for
-            self._timer = async_track_point_in_time(self.hass, self._async_stop_activity, self._toggle_until)
+            self._timer = async_track_point_in_time(
+                self.hass,
+                HassJob(
+                    self._async_stop_activity
+                ),
+                self._toggle_until
+            )
 
         # Are we cancelling an timed state? And are we allowed. Then turn it
         # back now, the timer can run without causing a problem.

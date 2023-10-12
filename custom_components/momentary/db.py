@@ -133,6 +133,7 @@ class Db:
                 if unique_id is None:
 
                     _LOGGER.debug(f"adding {switch[ATTR_NAME]} to the list of devices")
+                    unique_id = self._make_unique_id()
                     self._switches_meta_data.update({switch[ATTR_NAME]: {
                         ATTR_UNIQUE_ID: unique_id,
                         ATTR_ENTITY_ID: self._make_entity_id('switch', switch[ATTR_NAME])

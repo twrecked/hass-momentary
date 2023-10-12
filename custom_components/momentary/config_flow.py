@@ -24,21 +24,30 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input):
         _LOGGER.debug(f"showing shit {user_input}")
+        _LOGGER.debug(f"showing shit {self.hass.data.get(DOMAIN)}")
+
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
+        if self.hass.data.get(DOMAIN):
+            return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            pass
-            # return self.async_create_entry(title="momentary", data={
-            #     "switches": list(db.get().keys())
-            # })
+            #
+            db = Db(user_input['file_name'])
+            db.load()
+            return self.async_create_entry(title=DOMAIN, data={
+                ATTR_FILE_NAME: user_input['file_name'],
+                ATTR_SWITCHES: list(db.get().keys())
+            })
 
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema({
-                vol.Required("file_name"): str
+                vol.Required("file_name", default=DB_SWITCHES_FILE): str
             })
         )
 
     async def async_step_import(self, import_data):
-        """Import blink config from configuration.yaml."""
+        """Import momentary config from configuration.yaml."""
 
         # Set up the new database.
         db = Db()
