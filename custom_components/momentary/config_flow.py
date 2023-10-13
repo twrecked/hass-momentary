@@ -32,7 +32,6 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            #
             db = Db(user_input['file_name'])
             db.load()
             return self.async_create_entry(title=DOMAIN, data={

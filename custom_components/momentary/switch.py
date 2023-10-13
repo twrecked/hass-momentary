@@ -57,18 +57,17 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 async def async_setup_entry(
         hass: HomeAssistantType,
-        entry: ConfigEntry,
+        _entry: ConfigEntry,
         async_add_entities: Callable[[list], None],
 ) -> None:
-    _LOGGER.info("setting up the entries...")
+    _LOGGER.debug("setting up the entries...")
 
     # create entities
     entities = []
-    switches = hass.data[DOMAIN][ATTR_SWITCHES]
-    for switch in switches.keys():
-        _LOGGER.info(f"would try to add {switch}")
-        _LOGGER.info(f"would try to add {switches[switch]}")
-        entities.append(MomentarySwitch(switch, switches[switch], hass))
+    for switch, values in hass.data[DOMAIN][ATTR_SWITCHES].items():
+        _LOGGER.debug(f"would try to add {switch}")
+        _LOGGER.debug(f"would try to add {values}")
+        entities.append(MomentarySwitch(switch, values, hass))
 
     async_add_entities(entities)
 

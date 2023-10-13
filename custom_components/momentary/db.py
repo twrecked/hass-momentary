@@ -1,4 +1,4 @@
-
+import copy
 import logging
 import json
 import uuid
@@ -73,10 +73,26 @@ class Db:
             return name[1:]
         return f"{DOMAIN} {name}"
 
+    def _map_config_name(self, name):
+        """ Fix the name prefix.
+        We remove the ! sign meaning no to add momentary to the name and
+        add + where there was no !.
+        """
+        if name.startswith("!"):
+            return name[1:]
+        return f"+{name}"
+
+    def _make_name(self, name):
+        if name.startswith("+"):
+            return name[1:]
+        return name
+
     def _make_unique_id(self):
         return f'{uuid.uuid4()}.{DOMAIN}'
 
     def _make_entity_id(self, platform, name):
+        if name.startswith("+"):
+            return f'{platform}.{DOMAIN}_{slugify(name[1:])}'
         return f'{platform}.{slugify(name)}'
 
     def save_meta_data(self):
@@ -132,36 +148,51 @@ class Db:
                 # Make sure it looks sane and fix up the defaults.
                 switch = DB_SCHEMA(switch)
 
+                # Save yaml name and use for indexing.
+                name = switch[ATTR_NAME]
+                
                 # If there isn't a unique_id we create one. This usually means
                 # the user added a new switch to the array.
-                unique_id = meta_data.get(switch[ATTR_NAME], {}).get(ATTR_UNIQUE_ID, None)
+                unique_id = meta_data.get(name, {}).get(ATTR_UNIQUE_ID, None)
                 if unique_id is None:
 
-                    _LOGGER.debug(f"adding {switch[ATTR_NAME]} to the list of devices")
+                    _LOGGER.debug(f"adding {name} to the list of devices")
                     unique_id = self._make_unique_id()
-                    meta_data.update({switch[ATTR_NAME]: {
+                    meta_data.update({name: {
                         ATTR_UNIQUE_ID: unique_id,
-                        ATTR_ENTITY_ID: self._make_entity_id('switch', switch[ATTR_NAME])
+                        ATTR_ENTITY_ID: self._make_entity_id('switch', name)
                     }})
                     self._changed = True
 
                 # Now copy over the entity id of the device. Not having this is a
                 # bug.
-                entity_id = meta_data.get(switch[ATTR_NAME], {}).get(ATTR_ENTITY_ID, None)
+                entity_id = meta_data.get(name, {}).get(ATTR_ENTITY_ID, None)
                 if entity_id is None:
-                    _LOGGER.info(f"problem creating {switch[ATTR_NAME]}, no entity id")
+                    _LOGGER.info(f"problem creating {name}, no entity id")
                     continue
-                switch.update({ATTR_ENTITY_ID: entity_id})
 
-                # Add into dictionary by unique id and move off orphaned list.
-                self._switches.update({unique_id: switch})
-                self._switches_meta_data.update({switch[ATTR_NAME]: meta_data.pop(switch[ATTR_NAME])})
+                # Update YAML switch with fixed values.
+                switch.update({
+                    ATTR_ENTITY_ID: entity_id,
+                    ATTR_NAME: self._make_name(name)
+                })
+
+                # Add into switches dictionary by unique id and move meta data
+                # off temporary list.
+                self._switches.update({
+                    unique_id: switch
+                })
+                self._switches_meta_data.update({
+                    name: meta_data.pop(name)
+                })
 
             # Create orphaned list. If we have anything here we need to update
             # the saved meta data.
             for switch, values in meta_data.items():
                 values[ATTR_NAME] = switch
-                self._switches_orphaned_meta_data.update({values[ATTR_UNIQUE_ID]: values})
+                self._switches_orphaned_meta_data.update({
+                    values[ATTR_UNIQUE_ID]: values
+                })
                 self._changed = True
 
             # Make sure changes are kept.
@@ -186,7 +217,9 @@ class Db:
         """ Import an original YAML entry.
         """
 
-        # We remove the platform.
+        # We remove the platform field. We deepcopy before doing this to
+        # quiet down some startup errors.
+        switch = copy.deepcopy(switch)
         switch.pop('platform', None)
 
         # Create a unique and entity ids that matches the original version.
@@ -194,11 +227,13 @@ class Db:
         unique_id = self._make_original_unique_id(switch[ATTR_NAME])
         entity_id = self._make_original_entity_id(Platform.SWITCH, switch[ATTR_NAME])
 
-        # Fix the name by adding momentary if needed.
-        switch[ATTR_NAME] = self._make_original_name(switch[ATTR_NAME])
+        # Fix the name by removing ! or adding + as needed.
+        switch[ATTR_NAME] = self._map_config_name(switch[ATTR_NAME])
 
         # Add into the meta and user data.
-        self._switches.update({unique_id: switch})
+        self._switches.update({
+            unique_id: switch
+        })
         self._switches_meta_data.update({switch[ATTR_NAME]: {
             ATTR_UNIQUE_ID: unique_id,
             ATTR_ENTITY_ID: entity_id

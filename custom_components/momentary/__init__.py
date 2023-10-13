@@ -73,17 +73,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Load and create devices.
     _LOGGER.debug(f"entry={entry}")
     for switch, values in switches.items():
-        _LOGGER.info(f"would try to add {switch}")
-        _LOGGER.info(f"would try to add {values}")
+        _LOGGER.debug(f"would try to add {switch}")
+        _LOGGER.debug(f"would try to add {values}")
         await _async_get_or_create_momentary_device_in_registry(hass, entry, switch, values)
 
     # Delete orphaned entries.
     for switch, values in orphaned.items():
-        _LOGGER.info(f"would try to delete {switch}")
+        _LOGGER.debug(f"would try to delete {switch}")
         await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
 
     # create entity
-    _LOGGER.info("trying to move to next stage")
+    _LOGGER.debug("trying to move to next stage")
     hass.data[DOMAIN][ATTR_SWITCHES] = switches
     await hass.config_entries.async_forward_entry_setup(entry, Platform.SWITCH)
 
@@ -92,7 +92,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.info("unloading it all")
+    _LOGGER.debug("unloading it all")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
         hass.data[DOMAIN] = {}
@@ -125,4 +125,4 @@ async def _async_delete_momentary_device_from_registry(
         _LOGGER.debug(f"found something to delete! {device.id}")
         device_registry.async_remove_device(device.id)
     else:
-        _LOGGER.debug(f"have orphaned device in meta {unique_id}")
+        _LOGGER.info(f"have orphaned device in meta {unique_id}")

@@ -141,15 +141,25 @@ The following additional parameters can be specified against the switches:
 
 ## Upgrade Notes
 
+### After the Upgrade
+
+Check the devices and entities on the _Integrations_ page, if everything looks
+good then you can delete (or comment out) the old configuration.
+
+
 ### Names
 
-The `!` qualifier is no longer needed. Names are converted during the upgrade.
-The following will happen:
+The qualifier applied to the name has changed. The old qualify of `!` has been
+removed, not adding _momentary_ to the device/entity name is the default. And a 
+new qualify of `+` has been added telling the integration to add _momentary_ to
+the device/entity name.
 
-| Old Name            | New Name                      |
-| ------------------- | ----------------------------- |
-| Empty House Trigger | momentary Empty House Trigger |
-| !House Trigger      | Empty House Trigger           |
+The upgrade code will change this for you.
+
+| Old Name             | New Name                      | Entity Name                          |
+|----------------------| ----------------------------- | ------------------------------------ |
+| Empty House Trigger  | +Empty House Trigger          | switch.momentary_empty_house_trigger |
+| !Empty House Trigger | Empty House Trigger           | switch.empty_house_trigger           |
 
 ### `unique_id`
 
@@ -164,7 +174,15 @@ with the following:
 - Add the _Momentary_ integration.
 
 The system will re-create your devices with the correct entity ids but with
-new unique ids.
+new _UUID_ based unique ids.
 
 _I will look at how this can be made cleaner... maybe a config flow button._
 
+### Known Issues
+
+You will see errors like this. They don't seem to cause an issue and they 
+disappear once you remove the legacy configuration.
+
+```
+2023-10-13 17:28:09.154 ERROR (MainThread) [homeassistant.components.switch] The momentary platform for the switch integration does not support platform setup. Please remove it from your config.
+```
