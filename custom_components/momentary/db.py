@@ -227,7 +227,7 @@ class Db:
         unique_id = self._make_original_unique_id(switch[ATTR_NAME])
         entity_id = self._make_original_entity_id(Platform.SWITCH, switch[ATTR_NAME])
 
-        # Fix the name by removing ! or adding + as needed.
+        # Fix the name by removing a ! or adding a + as needed.
         switch[ATTR_NAME] = self._map_config_name(switch[ATTR_NAME])
 
         # Add into the meta and user data.
