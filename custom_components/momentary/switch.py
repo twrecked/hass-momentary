@@ -65,11 +65,10 @@ async def async_setup_entry(
     # create entities
     entities = []
     switches = hass.data[DOMAIN][ATTR_SWITCHES]
-    for switch in entry.data.get(ATTR_SWITCHES, {}):
-        if switch in switches:
-            _LOGGER.info(f"would try to add {switch}")
-            _LOGGER.info(f"would try to add {switches[switch]}")
-            entities.append(MomentarySwitch(switch, switches[switch], hass))
+    for switch in switches.keys():
+        _LOGGER.info(f"would try to add {switch}")
+        _LOGGER.info(f"would try to add {switches[switch]}")
+        entities.append(MomentarySwitch(switch, switches[switch], hass))
 
     async_add_entities(entities)
 

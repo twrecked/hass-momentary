@@ -50,6 +50,7 @@ class Db:
     _switches_file: str = DB_SWITCHES_FILE
     _switches = {}
     _switches_meta_data = {}
+    _switches_orphaned_meta_data = {}
     _changed: bool = False
 
     def __init__(self, file=DB_SWITCHES_FILE):
@@ -98,7 +99,7 @@ class Db:
         except Exception as e:
             _LOGGER.debug(f"couldn't save user data {str(e)}")
 
-    def load(self):
+    def load(self) -> None:
         """ Load switches from the database.
 
         They are stored as array because it makes it easier for the user to
@@ -113,11 +114,15 @@ class Db:
 
             self._switches = {}
             self._switches_meta_data = {}
+            self._switches_orphaned_meta_data = {}
 
-            # Read in the known meta data.
+            # Read in the known meta data. We put this into a temporary
+            # variable for now. Anything we find in the user list is moved into
+            # the permanent variable. Anything left is orphaned.
+            meta_data = {}
             try:
                 with open(DB_SWITCHES_META_FILE, 'r') as meta_file:
-                    self._switches_meta_data = json.load(meta_file).get(ATTR_SWITCHES, {})
+                    meta_data = json.load(meta_file).get(ATTR_SWITCHES, {})
             except Exception as e:
                 _LOGGER.debug(f"failed to read meta data {str(e)}")
 
@@ -129,12 +134,12 @@ class Db:
 
                 # If there isn't a unique_id we create one. This usually means
                 # the user added a new switch to the array.
-                unique_id = self._switches_meta_data.get(switch[ATTR_NAME], {}).get(ATTR_UNIQUE_ID, None)
+                unique_id = meta_data.get(switch[ATTR_NAME], {}).get(ATTR_UNIQUE_ID, None)
                 if unique_id is None:
 
                     _LOGGER.debug(f"adding {switch[ATTR_NAME]} to the list of devices")
                     unique_id = self._make_unique_id()
-                    self._switches_meta_data.update({switch[ATTR_NAME]: {
+                    meta_data.update({switch[ATTR_NAME]: {
                         ATTR_UNIQUE_ID: unique_id,
                         ATTR_ENTITY_ID: self._make_entity_id('switch', switch[ATTR_NAME])
                     }})
@@ -142,14 +147,22 @@ class Db:
 
                 # Now copy over the entity id of the device. Not having this is a
                 # bug.
-                entity_id = self._switches_meta_data.get(switch[ATTR_NAME], {}).get(ATTR_ENTITY_ID, None)
+                entity_id = meta_data.get(switch[ATTR_NAME], {}).get(ATTR_ENTITY_ID, None)
                 if entity_id is None:
                     _LOGGER.info(f"problem creating {switch[ATTR_NAME]}, no entity id")
                     continue
                 switch.update({ATTR_ENTITY_ID: entity_id})
 
-                # Add into dictionary by unique id.
+                # Add into dictionary by unique id and move off orphaned list.
                 self._switches.update({unique_id: switch})
+                self._switches_meta_data.update({switch[ATTR_NAME]: meta_data.pop(switch[ATTR_NAME])})
+
+            # Create orphaned list. If we have anything here we need to update
+            # the saved meta data.
+            for switch, values in meta_data.items():
+                values[ATTR_NAME] = switch
+                self._switches_orphaned_meta_data.update({values[ATTR_UNIQUE_ID]: values})
+                self._changed = True
 
             # Make sure changes are kept.
             if self._changed:
@@ -161,10 +174,13 @@ class Db:
             _LOGGER.debug(f"no file to load {str(e)}")
             self._switches = {}
             self._switches_meta_data = {}
-        return self._switches
+            self._switches_orphaned_meta_data = {}
 
     def get(self):
         return self._switches
+
+    def orphaned(self):
+        return self._switches_orphaned_meta_data
 
     def import_switch(self, switch):
         """ Import an original YAML entry.
@@ -196,3 +212,4 @@ class Db:
     def dump(self, prefix):
         _LOGGER.debug(f"dump({prefix}):meta={self._switches_meta_data}")
         _LOGGER.debug(f"dump({prefix}):switches={self._switches}")
+        _LOGGER.debug(f"dump({prefix}):orphaned={self._switches_orphaned_meta_data}")

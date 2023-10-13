@@ -15,6 +15,7 @@ import homeassistant.helpers.device_registry as dr
 
 from .const import (
     ATTR_SWITCHES,
+    ATTR_UNIQUE_ID,
     DOMAIN,
     MANUFACTURER,
     MODEL
@@ -63,16 +64,23 @@ def _async_find_matching_config_entry(hass):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug('async setup')
 
+    # Database of devices
+    db = Db()
+    db.load()
+    switches = db.get()
+    orphaned = db.orphaned()
+
     # Load and create devices.
     _LOGGER.debug(f"entry={entry}")
-    switches = Db().load()
-    for switch in entry.data.get(ATTR_SWITCHES, {}):
-        if switch in switches:
-            _LOGGER.info(f"would try to add1 {switch}")
-            _LOGGER.info(f"would try to add1 {switches[switch]}")
-            await _async_get_or_create_momentary_device_in_registry(hass, entry, switch, switches[switch])
-        else:
-            _LOGGER.info(f"failed to find {switch}")
+    for switch, values in switches.items():
+        _LOGGER.info(f"would try to add {switch}")
+        _LOGGER.info(f"would try to add {values}")
+        await _async_get_or_create_momentary_device_in_registry(hass, entry, switch, values)
+
+    # Delete orphaned entries.
+    for switch, values in orphaned.items():
+        _LOGGER.info(f"would try to delete {switch}")
+        await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
 
     # create entity
     _LOGGER.info("trying to move to next stage")
@@ -80,6 +88,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setup(entry, Platform.SWITCH)
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    _LOGGER.info("unloading it all")
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
+    if unload_ok:
+        hass.data[DOMAIN] = {}
+
+    return unload_ok
 
 
 async def _async_get_or_create_momentary_device_in_registry(
@@ -95,3 +113,16 @@ async def _async_get_or_create_momentary_device_in_registry(
         sw_version=__version__
     )
 
+
+async def _async_delete_momentary_device_from_registry(
+        hass: HomeAssistant, entry: ConfigEntry, unique_id, switch
+) -> None:
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(
+        identifiers={(DOMAIN, unique_id)},
+    )
+    if device:
+        _LOGGER.debug(f"found something to delete! {device.id}")
+        device_registry.async_remove_device(device.id)
+    else:
+        _LOGGER.debug(f"have orphaned device in meta {unique_id}")
