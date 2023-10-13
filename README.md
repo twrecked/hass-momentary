@@ -1,11 +1,13 @@
 # hass-momentary
+![icon](images/momentary-icon.png)
 
 ### Momentary Switch Component for Home Assistant
 A simple switch component that once turned on will turn itself off.
 
 ### NOTES!
 **This documentation is for the 0.7x version, you can find the
-0.7x version [here](https://github.com/twrecked/hass-momentary/blob/version-0.6.x/README.md).**
+0.6.x version [here](https://github.
+com/twrecked/hass-momentary/blob/version-0.6.x/README.md).**
 
 This is a big update that moves the component over to the `config_flow`
 system. The update should be seamless but if you run into any problems:
@@ -121,10 +123,8 @@ switches:
   toggle_for: 2
 ```
 
-Once you've updated the file you will need to reload the component. For now
-this is done with a restart.
-
-_I will look into how to reload the configuration from the integration page._
+Once you've updated the file you will need to reload the component from its
+integration setting.
 
 
 ### Options
@@ -161,12 +161,11 @@ If you want to move to the new _UUID_ based unique IDs you can manage this
 with the following:
 
 - Delete the _Momentary_ integration.
-- Stop _Home Assistant_
 - Delete `/config/.storage/momentary.meta.json`
-- Start _Home Assistant_
+- Add the _Momentary_ integration.
 
 The system will re-create your devices with the correct entity ids but with
 new unique ids.
 
-_I will look at how this can be made cleaner..._
+_I will look at how this can be made cleaner... maybe a config flow button._
 
