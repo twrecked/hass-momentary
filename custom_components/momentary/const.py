@@ -21,7 +21,7 @@ DEFAULT_CANCELLABLE = False
 DEFAULT_TOGGLE_FOR = timedelta(seconds=1)
 
 DB_SWITCHES_FILE = '/config/momentary.yaml'
-DB_SWITCHES_META_FILE = '/config/momentary.meta.json'
+DB_SWITCHES_META_FILE = '/config/.storage/momentary.meta.json'
 
 MANUFACTURER = "twrecked"
 MODEL = "momentary"

@@ -4,34 +4,48 @@
 A simple switch component that once turned on will turn itself off.
 
 ### NOTES!
-This release includes a `mode` configuration allowing the switch to be
-momentarily on or off. Existing configurations will work with the new code but
-use the new configuration going forward.
+**This documentation is for the 0.7x version, you can find the
+0.7x version [here](https://github.com/twrecked/hass-momentary/blob/version-0.6.x/README.md).**
+
+This is a big update that moves the component over to the `config_flow`
+system. The update should be seamless but if you run into any problems:
+
+- You can revert back to the previous version (0.6) and it will still work.
+- But if you can re-run the upgrade operation with debug enabled and create a
+  bug report I would greatly appreciate it.
 
 
 ## Table Of Contents
+
 1. [Notes](#Notes)
 1. [Thanks](#Thanks)
 1. [Installation](#Installation)
-   1. [Migrating from Old Layout](#Migrating-from-Old-Layout)
+   1. [HACS](#HACS)
    1. [Manually](#Manually)
    1. [From Script](#From-Script)
 1. [Component Configuration](#Component-Configuration)
+2. [Upgrade Notes](#Upgrade-notes)
 
 
 ## Notes
+
 Wherever you see `/config` in this README it refers to your home-assistant
 configuration directory. For me, for example, it's `/home/steve/ha` that is
 mapped to `/config` inside my docker container.
 
 
 ## Thanks
+
 Many thanks to:
 * [JetBrains](https://www.jetbrains.com/?from=hass-aarlo) for the excellent
   **PyCharm IDE** and providing me with an open source license to speed up the
   project development.
  
   [![JetBrains](/images/jetbrains.svg)](https://www.jetbrains.com/?from=hass-aarlo)
+
+* Icon adapted from <a href="https://www.onlinewebfonts.com/icon">svg icons</a>
+  and is licensed by CC BY 4.0
+
 
 ## Installation
 
@@ -57,22 +71,63 @@ install go /config
 
 
 ## Component Configuration
-Add the following to your `configuration.yaml` to enable the component:
+Add the component using the standard _Home Assistant --> Settings --> Add
+Integration_ option.
+
+Because this component creates fake entries and because I'm still figuring out
+the _Config Flow_ interface you still have to configured it by file.
+
+The default file is named `/config/momentary.yaml` and is a similar format to
+the standard _Home Assistant_ configuration files. This file will be created
+during the initial upgrade or when you add in the _Momentary_ integration. An
+empty files looks like this:
+
 
 ```yaml
-momentary:
+version: 1
+switches:
 ```
 
-To create a momentary on switch use the following:
+To create a single momentary device add the following:
 
 ```yaml
-switch:
-  - platform: momentary
-    name: Empty House Trigger
-    mode: "on"
-    toggle_for: 5
-    cancellable: True
+version: 1
+switches:
+- name: Empty House Trigger
 ```
+
+To create a single momentary device with custom options use:
+
+```yaml
+version: 1
+switches:
+- name: Empty House Trigger
+  mode: "on"
+  toggle_for: 5
+  cancellable: True
+```
+
+To create multiple momentary device add more devices at the bottom:
+
+```yaml
+version: 1
+switches:
+- name: Empty House Trigger
+  mode: "on"
+  toggle_for: 5
+  cancellable: True
+- name: Full House Trigger
+- name: Overflowing House Trigger
+  toggle_for: 2
+```
+
+Once you've updated the file you will need to reload the component. For now
+this is done with a restart.
+
+_I will look into how to reload the configuration from the integration page._
+
+
+### Options
 
 The following additional parameters can be specified against the switches:
 
@@ -83,34 +138,35 @@ The following additional parameters can be specified against the switches:
 | toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                          |
 | cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                           |
 
-To add multiple switches repeat the whole component configuration:
 
 
-```yaml
-switch:
-  - platform: momentary
-    name: Empty House Trigger
-    mode: "on"
-    toggle_for: 5
-  - platform: momentary
-    name: Bad Weather Trigger
-    mode: "on"
-    toggle_for:
-      milliseconds: 500
-```
+## Upgrade Notes
 
+### Names
 
-## Naming
+The `!` qualifier is no longer needed. Names are converted during the upgrade.
+The following will happen:
 
-By default, the code creates entities with `momentary` as part of their name.
-`Switch 1` in the previous example will give an entity of
-`switch.momentary_switch_1`. If you don't want the `momentary_` prefix add a `!`
-to the device name. For example:
+| Old Name            | New Name                      |
+| ------------------- | ----------------------------- |
+| Empty House Trigger | momentary Empty House Trigger |
+| !House Trigger      | Empty House Trigger           |
 
-```yaml
-switch:
-  - platform: momentary
-    name: !Switch 1
-```
+### `unique_id`
 
+During an upgrade the original name based unique id will be created. For a new
+install a _UUID_ based unique id will be created.
+
+If you want to move to the new _UUID_ based unique IDs you can manage this
+with the following:
+
+- Delete the _Momentary_ integration.
+- Stop _Home Assistant_
+- Delete `/config/.storage/momentary.meta.json`
+- Start _Home Assistant_
+
+The system will re-create your devices with the correct entity ids but with
+new unique ids.
+
+_I will look at how this can be made cleaner..._
 

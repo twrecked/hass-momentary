@@ -28,7 +28,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up an momentary component."""
+    """Set up an momentary component.
+    """
 
     hass.data.setdefault(DOMAIN, {})
 
@@ -51,6 +52,9 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 @callback
 def _async_find_matching_config_entry(hass):
+    """ If we have anything in config_entries for momentary we consider it
+    configured and will ignore the YAML.
+    """
     for entry in hass.config_entries.async_entries(DOMAIN):
         # if entry.source == SOURCE_IMPORT:
         return entry
