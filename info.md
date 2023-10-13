@@ -2,9 +2,12 @@
 A simple switch component that once turned on will turn itself off. 
 
 ### NOTES!
-This release includes a mode configuration allowing the switch to be momentarily
-on or off. Existing configurations will work with the new code but use the new
-configuration going forward.
+This is a big update that moves the component over to the `config_flow`
+system. The update should be seamless but if you run into any problems:
+
+- You can revert back to the previous version (0.6) and it will still work.
+- But if you can re-run the upgrade operation with debug enabled and create a
+  bug report I would greatly appreciate it.
 
 ## Features
 It provides:
