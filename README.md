@@ -6,8 +6,7 @@ A simple switch component that once turned on will turn itself off.
 
 ### NOTES!
 **This documentation is for the 0.7x version, you can find the
-0.6.x version [here](https://github.
-com/twrecked/hass-momentary/blob/version-0.6.x/README.md).**
+0.6.x version** [here](https://github.com/twrecked/hass-momentary/blob/version-0.6.x/README.md).
 
 This is a big update that moves the component over to the `config_flow`
 system. The update should be seamless but if you run into any problems:
@@ -45,7 +44,7 @@ Many thanks to:
  
   [![JetBrains](/images/jetbrains.svg)](https://www.jetbrains.com/?from=hass-aarlo)
 
-* Icon adapted from <a href="https://www.onlinewebfonts.com/icon">svg icons</a>
+* Icon adapted from [svg icons](https://www.onlinewebfonts.com/icon)
   and is licensed by CC BY 4.0
 
 
