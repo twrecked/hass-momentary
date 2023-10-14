@@ -72,16 +72,15 @@ install go /config
 
 
 ## Component Configuration
-Add the component using the standard _Home Assistant --> Settings --> Add
-Integration_ option.
+Add the component using the standard _Home Assistant_  _Integration_ method.
 
 Because this component creates fake entries and because I'm still figuring out
-the _Config Flow_ interface you still have to configured it by file.
+the _Config Flow_ interface you still have to configure it by file.
 
 The default file is named `/config/momentary.yaml` and is a similar format to
 the standard _Home Assistant_ configuration files. This file will be created
-during the initial upgrade or when you add in the _Momentary_ integration. An
-empty files looks like this:
+during an upgrade or when you add in a _Momentary_ integration. An empty 
+file looks like this:
 
 
 ```yaml
@@ -125,6 +124,9 @@ switches:
 Once you've updated the file you will need to reload the component from its
 integration setting.
 
+The integration uses the name to distinguish different switches. If you can 
+the name of a switch the old name will be deleted and the new name created 
+on reload. 
 
 ### Options
 
@@ -144,15 +146,15 @@ The following additional parameters can be specified against the switches:
 ### After the Upgrade
 
 Check the devices and entities on the _Integrations_ page, if everything looks
-good then you can delete (or comment out) the old configuration.
-
+good then you can comment out the old configuration. _Don't delete it yet, this
+is alpha and I might change some settings..._
 
 ### Names
 
 The qualifier applied to the name has changed. The old qualify of `!` has been
-removed, not adding _momentary_ to the device/entity name is the default. And a 
-new qualify of `+` has been added telling the integration to add _momentary_ to
-the device/entity name.
+removed, not adding _momentary_ to the device/entity name is the default. A 
+new qualify of `+` has been created, adding this tells the integration to add 
+_momentary_ to the device/entity name.
 
 The upgrade code will change this for you.
 
@@ -176,13 +178,28 @@ with the following:
 The system will re-create your devices with the correct entity ids but with
 new _UUID_ based unique ids.
 
-_I will look at how this can be made cleaner... maybe a config flow button._
+_I will look at how this can be made cleaner... maybe a config flow button 
+or as part of the upgrade._
 
 ### Known Issues
 
-You will see errors like this. They don't seem to cause an issue and they 
-disappear once you remove the legacy configuration.
+You will see errors like this on upgrade. They don't seem to cause an issue 
+and they disappear once you remove the legacy configuration.
 
 ```
 2023-10-13 17:28:09.154 ERROR (MainThread) [homeassistant.components.switch] The momentary platform for the switch integration does not support platform setup. Please remove it from your config.
 ```
+
+### Turning on Debug
+
+If you do run into issues you can enable debug with the following configration.
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.momentary: debug
+```
+
+If you can create a bug report with this debug output it would help me track 
+down the problem.
