@@ -1,4 +1,5 @@
-0.7.0a1: support device/entity
+0.7.0a1: support device/entity and standard integrations
+
 0.6.3: restore switch state
 0.6.2: restore wrongly removed options
 0.6.1: code tidy
