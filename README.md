@@ -128,7 +128,7 @@ The integration uses the name to distinguish different switches. If you can
 the name of a switch the old name will be deleted and the new name created 
 on reload. 
 
-The integration supports mutliple devices, you can use this group similar
+The integration supports mutliple entries, you can use this group similar
 momentary devices together.
 
 ### Options
