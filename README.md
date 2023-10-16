@@ -128,6 +128,9 @@ The integration uses the name to distinguish different switches. If you can
 the name of a switch the old name will be deleted and the new name created 
 on reload. 
 
+The integration supports mutliple devices, you can use this group similar
+momentary devices together.
+
 ### Options
 
 The following additional parameters can be specified against the switches:
@@ -138,7 +141,6 @@ The following additional parameters can be specified against the switches:
 | mode                    | string     | "on"               | Is the switch a momentary ON or OFF switch. Use `"on"` for on and `"off"` for off. |
 | toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                          |
 | cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                           |
-
 
 
 ## Upgrade Notes
@@ -171,9 +173,9 @@ install a _UUID_ based unique id will be created.
 If you want to move to the new _UUID_ based unique IDs you can manage this
 with the following:
 
-- Delete the _Momentary_ integration.
-- Delete `/config/.storage/momentary.meta.json`
-- Add the _Momentary_ integration.
+- Delete the imported _Momentary_ integration.
+- Re-add the imported _Momentary_ integration. You can use the default values
+  for group and file name.
 
 The system will re-create your devices with the correct entity ids but with
 new _UUID_ based unique ids.

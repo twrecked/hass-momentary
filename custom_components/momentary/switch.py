@@ -15,7 +15,7 @@ import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 from homeassistant.components.switch import SwitchEntity, DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID, CONF_NAME
+from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HassJob
 from homeassistant.helpers.config_validation import (PLATFORM_SCHEMA)
 from homeassistant.helpers.entity import DeviceInfo
@@ -25,6 +25,7 @@ from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
     ATTR_IDLE_STATE,
+    ATTR_GROUP_NAME,
     ATTR_SWITCHES,
     ATTR_TIMED_STATE,
     ATTR_TOGGLE_UNTIL,
@@ -57,14 +58,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 async def async_setup_entry(
         hass: HomeAssistantType,
-        _entry: ConfigEntry,
+        entry: ConfigEntry,
         async_add_entities: Callable[[list], None],
 ) -> None:
     _LOGGER.debug("setting up the entries...")
 
     # create entities
     entities = []
-    for switch, values in hass.data[DOMAIN][ATTR_SWITCHES].items():
+    for switch, values in hass.data[DOMAIN][entry.data[ATTR_GROUP_NAME]][ATTR_SWITCHES].items():
         _LOGGER.debug(f"would try to add {switch}")
         _LOGGER.debug(f"would try to add {values}")
         entities.append(MomentarySwitch(switch, values, hass))

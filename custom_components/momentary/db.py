@@ -1,6 +1,7 @@
 import copy
 import logging
 import json
+import threading
 import uuid
 import voluptuous as vol
 
@@ -20,8 +21,8 @@ from .const import (
     DEFAULT_CANCELLABLE,
     DEFAULT_MODE,
     DEFAULT_TOGGLE_FOR,
-    DB_SWITCHES_FILE,
-    DB_SWITCHES_META_FILE,
+    DB_DEFAULT_SWITCHES_FILE,
+    DB_DEFAULT_SWITCHES_META_FILE,
     DOMAIN
 )
 
@@ -34,26 +35,30 @@ DB_SCHEMA = vol.Schema({
     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
 })
 
+DB_LOCK = threading.Lock()
+
 
 class Db:
     """ Manage the momentary switch database.
     
     We have 2 data points:
-    - DB_SWITCHES_FILE; where the user configures their switches, we create
+    - DB_DEFAULT_SWITCHES_FILE; where the user configures their switches, we create
       this the first time the config flow code is run
-    - DB_SWITCHES_META_FILE; where we map the user entries to their unique ids
+    - DB_DEFAULT_SWITCHES_META_FILE; where we map the user entries to their unique ids
 
     When we load we match the user list against our meta list and update
     entries as needed.
     """
 
-    _switches_file: str = DB_SWITCHES_FILE
+    _group_name: str = None
+    _switches_file: str = DB_DEFAULT_SWITCHES_FILE
     _switches = {}
     _switches_meta_data = {}
-    _switches_orphaned_meta_data = {}
+    _orphaned_switches = {}
     _changed: bool = False
 
-    def __init__(self, file=DB_SWITCHES_FILE):
+    def __init__(self, group_name: str, file: str):
+        self._group_name = group_name
         self._switches_file = file
 
     def _make_original_unique_id(self, name):
@@ -96,15 +101,36 @@ class Db:
         return f'{platform}.{slugify(name)}'
 
     def save_meta_data(self):
-        try:
-            with open(DB_SWITCHES_META_FILE, 'w') as meta_file:
-                json.dump({
-                    ATTR_VERSION: 1,
-                    ATTR_SWITCHES: self._switches_meta_data
-                }, meta_file, indent=4)
-            self._changed = False
-        except Exception as e:
-            _LOGGER.debug(f"couldn't save meta data {str(e)}")
+
+        # Make sure we have the global lock for this.
+        with DB_LOCK:
+
+            # Read in current meta data
+            switches = {}
+            try:
+                with open(DB_DEFAULT_SWITCHES_META_FILE, 'r') as meta_file:
+                    switches = json.load(meta_file).get(ATTR_SWITCHES, {})
+            except Exception as e:
+                _LOGGER.debug(f"no meta data yet {str(e)}")
+
+            # Update (or add) the group piece.
+            _LOGGER.debug(f"meta before {switches}")
+            switches.update({
+                self._group_name: self._switches_meta_data
+            })
+            _LOGGER.debug(f"meta after {switches}")
+
+            # Write it back out.
+            try:
+                with open(DB_DEFAULT_SWITCHES_META_FILE, 'w') as meta_file:
+                    json.dump({
+                        ATTR_VERSION: 1,
+                        ATTR_SWITCHES: switches
+                    }, meta_file, indent=4)
+            except Exception as e:
+                _LOGGER.debug(f"couldn't save meta data {str(e)}")
+
+        self._changed = False
 
     def save_user_data(self):
         try:
@@ -130,20 +156,28 @@ class Db:
 
             self._switches = {}
             self._switches_meta_data = {}
-            self._switches_orphaned_meta_data = {}
+            self._orphaned_switches = {}
 
             # Read in the known meta data. We put this into a temporary
             # variable for now. Anything we find in the user list is moved into
             # the permanent variable. Anything left is orphaned.
             meta_data = {}
             try:
-                with open(DB_SWITCHES_META_FILE, 'r') as meta_file:
-                    meta_data = json.load(meta_file).get(ATTR_SWITCHES, {})
+                # Make sure we have the global lock for this.
+                with (DB_LOCK):
+                    with open(DB_DEFAULT_SWITCHES_META_FILE, 'r') as meta_file:
+                        meta_data = json.load(meta_file).get(ATTR_SWITCHES, {}).get(self._group_name, {})
             except Exception as e:
                 _LOGGER.debug(f"failed to read meta data {str(e)}")
 
             # Read in the user data.
-            for switch in load_yaml(self._switches_file).get(ATTR_SWITCHES, []):
+            switches = {}
+            try:
+                switches = load_yaml(self._switches_file).get(ATTR_SWITCHES, [])
+            except Exception as e:
+                _LOGGER.debug(f"failed to read switch data {str(e)}")
+
+            for switch in switches:
 
                 # Make sure it looks sane and fix up the defaults.
                 switch = DB_SCHEMA(switch)
@@ -190,7 +224,7 @@ class Db:
             # the saved meta data.
             for switch, values in meta_data.items():
                 values[ATTR_NAME] = switch
-                self._switches_orphaned_meta_data.update({
+                self._orphaned_switches.update({
                     values[ATTR_UNIQUE_ID]: values
                 })
                 self._changed = True
@@ -205,13 +239,19 @@ class Db:
             _LOGGER.debug(f"no file to load {str(e)}")
             self._switches = {}
             self._switches_meta_data = {}
-            self._switches_orphaned_meta_data = {}
+            self._orphaned_switches = {}
 
-    def get(self):
+    @property
+    def group(self):
+        return self._group_name
+
+    @property
+    def switches(self):
         return self._switches
 
-    def orphaned(self):
-        return self._switches_orphaned_meta_data
+    @property
+    def orphaned_switches(self):
+        return self._orphaned_switches
 
     def import_switch(self, switch):
         """ Import an original YAML entry.
@@ -244,7 +284,36 @@ class Db:
         self.save_user_data()
         self.dump("import")
 
+    @staticmethod
+    def delete_group(group_name: str):
+
+        # Make sure we have the global lock for this.
+        with DB_LOCK:
+
+            # Read in current meta data
+            switches = {}
+            try:
+                with open(DB_DEFAULT_SWITCHES_META_FILE, 'r') as meta_file:
+                    switches = json.load(meta_file).get(ATTR_SWITCHES, {})
+            except Exception as e:
+                _LOGGER.debug(f"no meta data yet {str(e)}")
+
+            # Remove the group.
+            _LOGGER.debug(f"meta before {switches}")
+            switches.pop(group_name)
+            _LOGGER.debug(f"meta after {switches}")
+
+            # Write it back out.
+            try:
+                with open(DB_DEFAULT_SWITCHES_META_FILE, 'w') as meta_file:
+                    json.dump({
+                        ATTR_VERSION: 1,
+                        ATTR_SWITCHES: switches
+                    }, meta_file, indent=4)
+            except Exception as e:
+                _LOGGER.debug(f"couldn't save meta data {str(e)}")
+
     def dump(self, prefix):
         _LOGGER.debug(f"dump({prefix}):meta={self._switches_meta_data}")
         _LOGGER.debug(f"dump({prefix}):switches={self._switches}")
-        _LOGGER.debug(f"dump({prefix}):orphaned={self._switches_orphaned_meta_data}")
+        _LOGGER.debug(f"dump({prefix}):orphaned={self._orphaned_switches}")

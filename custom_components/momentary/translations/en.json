@@ -1,13 +1,16 @@
 {
+  "title": "Momentary Devices",
   "config": {
-    "abort": {
-      "single_instance_allowed": "Only a single configuration of momentary is allowed."
+    "error": {
+      "group_name_used": "That group name is already in use, try another.",
+      "file_name_used": "That file name is already in use, try another."
     },
     "step": {
       "user": {
         "title": "Momentary Database",
-        "description": "Enter the path to a file containing the momentary devices. If it does not exist an empty one will be created.",
+        "description": "Enter the group name and path to a file containing the momentary devices. If it does not exist an empty one will be created.",
         "data": {
+          "group_name": "Group",
           "file_name": "File"
         }
       }

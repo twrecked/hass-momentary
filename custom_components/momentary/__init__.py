@@ -8,14 +8,17 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
-from homeassistant.const import CONF_NAME, CONF_SOURCE, Platform
+from homeassistant.const import CONF_SOURCE, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.typing import ConfigType
 import homeassistant.helpers.device_registry as dr
 
 from .const import (
+    ATTR_FILE_NAME,
+    ATTR_GROUP_NAME,
     ATTR_SWITCHES,
     ATTR_UNIQUE_ID,
+    CONF_NAME,
     DOMAIN,
     MANUFACTURER,
     MODEL
@@ -62,29 +65,33 @@ def _async_find_matching_config_entry(hass):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    _LOGGER.debug('async setup')
+    _LOGGER.debug(f'async setup {entry.data}')
 
     # Database of devices
-    db = Db()
+    group_name = entry.data[ATTR_GROUP_NAME]
+    file_name = entry.data[ATTR_FILE_NAME]
+    db = Db(group_name, file_name)
     db.load()
-    switches = db.get()
-    orphaned = db.orphaned()
 
     # Load and create devices.
-    _LOGGER.debug(f"entry={entry}")
-    for switch, values in switches.items():
+    for switch, values in db.switches.items():
         _LOGGER.debug(f"would try to add {switch}")
-        _LOGGER.debug(f"would try to add {values}")
+        # _LOGGER.debug(f"would try to add {values}")
         await _async_get_or_create_momentary_device_in_registry(hass, entry, switch, values)
 
     # Delete orphaned entries.
-    for switch, values in orphaned.items():
+    for switch, values in db.orphaned_switches.items():
         _LOGGER.debug(f"would try to delete {switch}")
         await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
 
-    # create entity
-    _LOGGER.debug("trying to move to next stage")
-    hass.data[DOMAIN][ATTR_SWITCHES] = switches
+    # Update hass data and queue entry creation.
+    hass.data[DOMAIN].update({
+        group_name: {
+            ATTR_SWITCHES: db.switches,
+            ATTR_FILE_NAME: file_name
+        }
+    })
+    _LOGGER.debug(f"update hass data {hass.data[DOMAIN]}")
     await hass.config_entries.async_forward_entry_setup(entry, Platform.SWITCH)
 
     return True
@@ -92,10 +99,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("unloading it all")
+    _LOGGER.debug(f"unloading it {entry.data[ATTR_GROUP_NAME]}")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
-        hass.data[DOMAIN] = {}
+        hass.data[DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
+        Db.delete_group(entry.data[ATTR_GROUP_NAME])
+    _LOGGER.debug(f"after hass={hass.data[DOMAIN]}")
 
     return unload_ok
 
