@@ -1,0 +1,19 @@
+{
+  "title": "Momentálne zariadenia",
+  "config": {
+    "error": {
+      "group_name_used": "Tento názov skupiny sa už používa, skúste iný.",
+      "file_name_used": "Tento názov súboru sa už používa, skúste iný."
+    },
+    "step": {
+      "user": {
+        "title": "Momentálna databáza",
+        "description": "Zadajte názov skupiny a cestu k súboru obsahujúcemu momentálne zariadenia. Ak neexistuje, vytvorí sa prázdny.",
+        "data": {
+          "group_name": "Skupina",
+          "file_name": "Súbor"
+        }
+      }
+    }
+  }
+}
