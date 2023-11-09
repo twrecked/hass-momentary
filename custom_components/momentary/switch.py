@@ -76,16 +76,6 @@ async def async_setup_entry(
 class MomentarySwitch(RestoreEntity, SwitchEntity):
     """Representation of a Momentary switch."""
 
-    _uuid: str = ""
-    _mode: str = DEFAULT_MODE
-    _cancellable: bool = DEFAULT_CANCELLABLE
-    _toggle_for: timedelta = DEFAULT_TOGGLE_FOR
-    _toggle_until: datetime = DEFAULT_TOGGLE_UNTIL
-    _idle_state: bool = False
-    _timed_state: bool = True
-    _timer: Callable[[], None] | None = None
-    _hass = None
-
     def __init__(self, uuid, config, hass):
         """Initialize the Momentary switch device."""
 
@@ -101,6 +91,12 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         self._mode = config.get(CONF_MODE, DEFAULT_MODE)
         self._toggle_for = config.get(CONF_TOGGLE_FOR, DEFAULT_TOGGLE_FOR)
         self._cancellable = config.get(CONF_CANCELLABLE, DEFAULT_CANCELLABLE)
+
+        # Local defaults
+        self._toggle_until = DEFAULT_TOGGLE_UNTIL
+        self._idle_state = False
+        self._timed_state = True
+        self._timer = None
 
         # Old configuration - only turns on
         if self._mode.lower() == DEFAULT_MODE:

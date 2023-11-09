@@ -26,7 +26,7 @@ from .const import (
 from .db import Db
 
 
-__version__ = '0.7.0a1'
+__version__ = '0.7.0a2'
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -50,16 +50,14 @@ class Db:
     entries as needed.
     """
 
-    _group_name: str = None
-    _switches_file: str = DB_DEFAULT_SWITCHES_FILE
-    _switches = {}
-    _switches_meta_data = {}
-    _orphaned_switches = {}
-    _changed: bool = False
-
     def __init__(self, group_name: str, file: str):
         self._group_name = group_name
         self._switches_file = file
+
+        self._switches = {}
+        self._switches_meta_data = {}
+        self._orphaned_switches = {}
+        self._changed: bool = False
 
     def _make_original_unique_id(self, name):
         if name.startswith("!"):
