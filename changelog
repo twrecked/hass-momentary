@@ -1,3 +1,4 @@
+0.7.0a2: make instance variables explicit
 0.7.0a1: support device/entity and standard integrations
 
 0.6.3: restore switch state
