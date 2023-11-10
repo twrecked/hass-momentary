@@ -1,6 +1,12 @@
+"""
+This component provides support for a momentary switch.
+"""
+
 from datetime import timedelta
 
-DOMAIN = "momentary"
+COMPONENT_DOMAIN = "momentary"
+COMPONENT_MANUFACTURER = "twrecked"
+COMPONENT_MODEL = "momentary"
 
 ATTR_FILE_NAME = "file_name"
 ATTR_GROUP_NAME = "group_name"
@@ -24,6 +30,3 @@ DEFAULT_TOGGLE_FOR = timedelta(seconds=1)
 
 DB_DEFAULT_SWITCHES_FILE = "/config/momentary.yaml"
 DB_DEFAULT_SWITCHES_META_FILE = "/config/.storage/momentary.meta.json"
-
-MANUFACTURER = "twrecked"
-MODEL = "momentary"
