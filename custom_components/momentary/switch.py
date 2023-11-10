@@ -1,46 +1,29 @@
 """
 This component provides support for a momentary switch.
-
 """
 
 import logging
 import pprint
-from datetime import datetime, timedelta
+import voluptuous as vol
+from datetime import datetime
 from typing import Any
 from collections.abc import Callable
 
-import voluptuous as vol
-
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
-from homeassistant.components.switch import SwitchEntity, DOMAIN
+from homeassistant.components.switch import (
+    SwitchEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HassJob
-from homeassistant.helpers.config_validation import (PLATFORM_SCHEMA)
+from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import HomeAssistantType
 
-from .const import (
-    ATTR_IDLE_STATE,
-    ATTR_GROUP_NAME,
-    ATTR_SWITCHES,
-    ATTR_TIMED_STATE,
-    ATTR_TOGGLE_UNTIL,
-    ATTR_UNIQUE_ID,
-    CONF_CANCELLABLE,
-    CONF_MODE,
-    CONF_NAME,
-    CONF_TOGGLE_FOR,
-    DEFAULT_CANCELLABLE,
-    DEFAULT_MODE,
-    DEFAULT_TOGGLE_FOR,
-    DOMAIN,
-    MANUFACTURER,
-    MODEL
-)
+from .const import *
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,12 +31,17 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_TOGGLE_UNTIL_STR = "1970-01-01T00:00:00+00:00"
 DEFAULT_TOGGLE_UNTIL = datetime.fromisoformat(DEFAULT_TOGGLE_UNTIL_STR)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+BASE_SCHEMA = {
     vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_MODE, default=DEFAULT_MODE): cv.string,
     vol.Optional(CONF_TOGGLE_FOR, default=DEFAULT_TOGGLE_FOR): vol.All(cv.time_period, cv.positive_timedelta),
     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
-})
+    vol.Optional(ATTR_ENTITY_ID, default=""): cv.string,
+}
+
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(BASE_SCHEMA)
+
+SWITCH_SCHEMA = vol.Schema(BASE_SCHEMA)
 
 
 async def async_setup_entry(
@@ -65,7 +53,8 @@ async def async_setup_entry(
 
     # create entities
     entities = []
-    for switch, values in hass.data[DOMAIN][entry.data[ATTR_GROUP_NAME]][ATTR_SWITCHES].items():
+    for switch, values in hass.data[COMPONENT_DOMAIN][entry.data[ATTR_GROUP_NAME]][ATTR_SWITCHES].items():
+        values = SWITCH_SCHEMA(values)
         _LOGGER.debug(f"would try to add {switch}")
         _LOGGER.debug(f"would try to add {values}")
         entities.append(MomentarySwitch(switch, values, hass))
@@ -76,16 +65,11 @@ async def async_setup_entry(
 class MomentarySwitch(RestoreEntity, SwitchEntity):
     """Representation of a Momentary switch."""
 
-    def __init__(self, uuid, config, hass):
+    def __init__(self, unique_id, config, hass):
         """Initialize the Momentary switch device."""
 
-        self._hass = hass
-        self._uuid = uuid
         _LOGGER.debug(f'{config}')
-
-        self._attr_name = config.get(CONF_NAME)
-        self.entity_id = config[ATTR_ENTITY_ID]
-        self._attr_unique_id = uuid
+        self._hass = hass
 
         # Get settings.
         self._mode = config.get(CONF_MODE, DEFAULT_MODE)
@@ -112,10 +96,14 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
 
         _LOGGER.info(f'MomentarySwitch: {self.name} created')
 
+        # Home Assistant stuff.
+        self.entity_id = config[ATTR_ENTITY_ID]
+        self._attr_name = config.get(CONF_NAME)
+        self._attr_unique_id = unique_id
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, uuid)},
-            manufacturer=MANUFACTURER,
-            model=MODEL,
+            identifiers={(COMPONENT_DOMAIN, unique_id)},
+            manufacturer=COMPONENT_MANUFACTURER,
+            model=COMPONENT_MODEL,
         )
 
     def _create_state(self):
