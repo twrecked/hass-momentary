@@ -1,11 +1,12 @@
 {
-  "config_flow": true,
   "domain": "momentary",
   "name": "Momentary Switch Component",
-  "documentation": "https://github.com/twrecked/hass-momentary/blob/master/README.md",
+  "codeowners": ["@twrecked"],
+  "config_flow": true,
   "dependencies": [],
-  "codeowners": ["@sherrell"],
+  "documentation": "https://github.com/twrecked/hass-momentary/blob/master/README.md",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/twrecked/hass-momentary/issues",
   "requirements": [],
-  "version": "0.7.0a2",
-  "iot_class": "local_polling"
+  "version": "0.7.0a3"
 }
