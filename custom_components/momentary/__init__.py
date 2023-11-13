@@ -64,12 +64,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Load and create devices.
     for device, name in cfg.devices.items():
         _LOGGER.debug(f"would try to add device {device}/{name}")
-        # _LOGGER.debug(f"would try to add {values}")
         await _async_get_or_create_momentary_device_in_registry(hass, entry, device, name)
 
     # Delete orphaned entries.
-    # for switch, values in cfg.orphaned_switches.items():
-    #     _LOGGER.debug(f"would try to delete {switch}")
+    for switch, values in cfg.orphaned_devices.items():
+        _LOGGER.debug(f"would try to delete {switch}/{values}")
     #     await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
 
     # Update hass data and queue entry creation.
