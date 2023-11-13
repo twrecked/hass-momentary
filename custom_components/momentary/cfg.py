@@ -97,10 +97,12 @@ def _delete_meta_data(group_name: str):
             _LOGGER.debug(f"no meta data yet {str(e)}")
 
         # Remove the group.
-        _LOGGER.debug(f"meta before {switches}")
+        _LOGGER.debug(f"devices meta before {devices}")
+        _LOGGER.debug(f"switches meta before {switches}")
         devices.pop(group_name)
         switches.pop(group_name)
-        _LOGGER.debug(f"meta after {switches}")
+        _LOGGER.debug(f"devices meta after {devices}")
+        _LOGGER.debug(f"switches meta after {switches}")
 
         # Write it back out.
         try:

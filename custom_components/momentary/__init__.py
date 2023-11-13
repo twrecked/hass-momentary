@@ -74,6 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Update hass data and queue entry creation.
     hass.data[COMPONENT_DOMAIN].update({
         group_name: {
+            ATTR_DEVICES: cfg.devices,
             ATTR_SWITCHES: cfg.switches,
             ATTR_FILE_NAME: file_name
         }
@@ -89,8 +90,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(f"unloading it {entry.data[ATTR_GROUP_NAME]}")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
-        hass.data[COMPONENT_DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
         BlendedCfg.delete_group(entry.data[ATTR_GROUP_NAME])
+        cfg = hass.data[COMPONENT_DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
+        for device, name in cfg[ATTR_DEVICES].items():
+            await _async_delete_momentary_device_from_registry(hass, entry, device, name)
     _LOGGER.debug(f"after hass={hass.data[COMPONENT_DOMAIN]}")
 
     return unload_ok
@@ -111,14 +114,14 @@ async def _async_get_or_create_momentary_device_in_registry(
 
 
 async def _async_delete_momentary_device_from_registry(
-        hass: HomeAssistant, _entry: ConfigEntry, unique_id, _switch
+        hass: HomeAssistant, _entry: ConfigEntry, device_id, _name
 ) -> None:
     device_registry = dr.async_get(hass)
     device = device_registry.async_get_device(
-        identifiers={(COMPONENT_DOMAIN, unique_id)},
+        identifiers={(COMPONENT_DOMAIN, device_id)},
     )
     if device:
         _LOGGER.debug(f"found something to delete! {device.id}")
         device_registry.async_remove_device(device.id)
     else:
-        _LOGGER.info(f"have orphaned device in meta {unique_id}")
+        _LOGGER.info(f"have orphaned device in meta {device_id}")
