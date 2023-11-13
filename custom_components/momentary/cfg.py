@@ -232,9 +232,8 @@ class BlendedCfg:
             device_name: self._dmeta_data_in[device_name]
         })
 
+        # Now attach each switch to a device.
         for switch in switches:
-
-            # Save yaml name and use for indexing.
             name = switch[ATTR_NAME]
 
             # If there isn't a unique_id we create one. This usually means
