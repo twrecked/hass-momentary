@@ -37,6 +37,7 @@ BASE_SCHEMA = {
     vol.Optional(CONF_TOGGLE_FOR, default=DEFAULT_TOGGLE_FOR): vol.All(cv.time_period, cv.positive_timedelta),
     vol.Optional(CONF_CANCELLABLE, default=DEFAULT_CANCELLABLE): cv.boolean,
     vol.Optional(ATTR_ENTITY_ID, default=""): cv.string,
+    vol.Optional(ATTR_DEVICE_ID, default=""): cv.string,
 }
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(BASE_SCHEMA)
@@ -55,8 +56,7 @@ async def async_setup_entry(
     entities = []
     for switch, values in hass.data[COMPONENT_DOMAIN][entry.data[ATTR_GROUP_NAME]][ATTR_SWITCHES].items():
         values = SWITCH_SCHEMA(values)
-        _LOGGER.debug(f"would try to add {switch}")
-        _LOGGER.debug(f"would try to add {values}")
+        _LOGGER.debug(f"would try to add switch {switch}/{values}")
         entities.append(MomentarySwitch(switch, values, hass))
 
     async_add_entities(entities)
@@ -101,7 +101,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         self._attr_name = config.get(CONF_NAME)
         self._attr_unique_id = unique_id
         self._attr_device_info = DeviceInfo(
-            identifiers={(COMPONENT_DOMAIN, unique_id)},
+            identifiers={(COMPONENT_DOMAIN, config[ATTR_DEVICE_ID])},
             manufacturer=COMPONENT_MANUFACTURER,
             model=COMPONENT_MODEL,
         )

@@ -8,6 +8,7 @@ COMPONENT_DOMAIN = "momentary"
 COMPONENT_MANUFACTURER = "twrecked"
 COMPONENT_MODEL = "momentary"
 
+ATTR_DEVICE_ID = "device_id"
 ATTR_FILE_NAME = "file_name"
 ATTR_GROUP_NAME = "group_name"
 ATTR_IDLE_STATE = "idle_state"

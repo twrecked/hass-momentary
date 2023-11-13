@@ -158,6 +158,10 @@ def _make_entity_id(platform, name):
     return f'{platform}.{slugify(name)}'
 
 
+def _make_device_id(name):
+    return f'{slugify(_make_name(name))}'
+
+
 class BlendedCfg:
     """ Manage the momentary switch database.
     
@@ -175,9 +179,60 @@ class BlendedCfg:
         self._switches_file = file
         self._changed: bool = False
 
+        self._devices = {}
         self._switches = {}
-        self._switches_meta_data = {}
-        self._orphaned_switches = {}
+        self._meta_data = {}
+        self._orphaned_devices = {}
+
+    def _parse_switches(self, meta_data, device_name, device_id, switches) -> None:
+
+        # Save this device ID if new.
+        if device_id not in self._devices:
+            self._devices.update({
+                device_id: device_name
+            })
+
+        for switch in switches:
+
+            # Save yaml name and use for indexing.
+            name = switch[ATTR_NAME]
+
+            # If there isn't a unique_id we create one. This usually means
+            # the user added a new switch to the array.
+            unique_id = meta_data.get(name, {}).get(ATTR_UNIQUE_ID, None)
+            if unique_id is None:
+
+                _LOGGER.debug(f"adding {name} to the list of devices")
+                unique_id = _make_unique_id()
+                meta_data.update({name: {
+                    ATTR_DEVICE_ID: device_id,
+                    ATTR_UNIQUE_ID: unique_id,
+                    ATTR_ENTITY_ID: _make_entity_id('switch', name)
+                }})
+                self._changed = True
+
+            # Now copy over the entity id of the device. Not having this is a
+            # bug.
+            entity_id = meta_data.get(name, {}).get(ATTR_ENTITY_ID, None)
+            if entity_id is None:
+                _LOGGER.info(f"problem creating {name}, no entity id")
+                continue
+
+            # Update YAML switch with fixed values.
+            switch.update({
+                ATTR_DEVICE_ID: device_id,
+                ATTR_ENTITY_ID: entity_id,
+                ATTR_NAME: _make_name(name)
+            })
+
+            # Add into switches dictionary by unique id and move meta data
+            # off temporary list.
+            self._switches.update({
+                unique_id: switch
+            })
+            self._meta_data.update({
+                name: meta_data.pop(name)
+            })
 
     def load(self) -> None:
         """ Load switches from the database.
@@ -191,70 +246,52 @@ class BlendedCfg:
         config_flow piece.
         """
         try:
+            self._devices = {}
             self._switches = {}
-            self._switches_meta_data = {}
-            self._orphaned_switches = {}
+            self._meta_data = {}
+            self._orphaned_devices = {}
 
             # Read in the known meta data. We put this into a temporary
             # variable for now. Anything we find in the user list is moved into
             # the permanent variable. Anything left is orphaned.
             meta_data = _load_meta_data(self._group_name)
 
-            # Read in the user data.
-            switches = _load_user_data(self._switches_file)
+            # Parse out the user data. We have 2 formats:
+            # - `name:` this indicates a device/entity with a one to one mapping
+            # - `a device name:`, any key other than `name`, this indicates a
+            #   device with multiple entities
+            for device_or_switch in _load_user_data(self._switches_file):
+                if CONF_NAME in device_or_switch:
+                    device_name = _make_name(device_or_switch[CONF_NAME])
+                    device_id = _make_device_id(device_or_switch[CONF_NAME])
+                    self._parse_switches(meta_data, device_name, device_id, [device_or_switch])
 
-            for switch in switches:
+                elif isinstance(device_or_switch, dict):
+                    device_name = list(device_or_switch.keys())[0]
+                    device_id = slugify(f"{COMPONENT_DOMAIN}.{self._group_name}.{device_name}")
+                    self._parse_switches(meta_data, device_name, device_id, device_or_switch[device_name])
 
-                # Save yaml name and use for indexing.
-                name = switch[ATTR_NAME]
-                
-                # If there isn't a unique_id we create one. This usually means
-                # the user added a new switch to the array.
-                unique_id = meta_data.get(name, {}).get(ATTR_UNIQUE_ID, None)
-                if unique_id is None:
-
-                    _LOGGER.debug(f"adding {name} to the list of devices")
-                    unique_id = _make_unique_id()
-                    meta_data.update({name: {
-                        ATTR_UNIQUE_ID: unique_id,
-                        ATTR_ENTITY_ID: _make_entity_id('switch', name)
-                    }})
-                    self._changed = True
-
-                # Now copy over the entity id of the device. Not having this is a
-                # bug.
-                entity_id = meta_data.get(name, {}).get(ATTR_ENTITY_ID, None)
-                if entity_id is None:
-                    _LOGGER.info(f"problem creating {name}, no entity id")
-                    continue
-
-                # Update YAML switch with fixed values.
-                switch.update({
-                    ATTR_ENTITY_ID: entity_id,
-                    ATTR_NAME: _make_name(name)
-                })
-
-                # Add into switches dictionary by unique id and move meta data
-                # off temporary list.
-                self._switches.update({
-                    unique_id: switch
-                })
-                self._switches_meta_data.update({
-                    name: meta_data.pop(name)
-                })
+                else:
+                    _LOGGER.info("malformed device or group")
 
             # Create orphaned list. If we have anything here we need to update
             # the saved meta data.
             for switch, values in meta_data.items():
+                if ATTR_DEVICE_ID not in values:
+                    _LOGGER.debug(f"no attr for {switch}")
+                    continue
+                if values[ATTR_DEVICE_ID] in self._devices:
+                    _LOGGER.debug(f"partial use for {switch}/{values[ATTR_DEVICE_ID]}")
+                    continue
                 values[ATTR_NAME] = switch
-                self._orphaned_switches.update({
-                    values[ATTR_UNIQUE_ID]: values
+                self._orphaned_devices.update({
+                    values[ATTR_DEVICE_ID]: values
                 })
                 self._changed = True
 
             # Make sure changes are kept.
             if self._changed:
-                _save_meta_data(self._group_name, self._switches_meta_data)
+                _save_meta_data(self._group_name, self._meta_data)
                 self._changed = False
 
             self.dump("load")
@@ -262,29 +299,34 @@ class BlendedCfg:
         except Exception as e:
             _LOGGER.debug(f"no file to load {str(e)}")
             self._switches = {}
-            self._switches_meta_data = {}
-            self._orphaned_switches = {}
+            self._meta_data = {}
+            self._orphaned_devices = {}
 
     @property
     def group(self):
         return self._group_name
 
     @property
-    def switches(self):
-        return self._switches
+    def devices(self):
+        return self._devices
 
     @property
-    def orphaned_switches(self):
-        return self._orphaned_switches
+    def orphaned_devices(self):
+        return self._orphaned_devices
+
+    @property
+    def switches(self):
+        return self._switches
 
     @staticmethod
     def delete_group(group_name: str):
         _delete_meta_data(group_name)
 
     def dump(self, prefix):
-        _LOGGER.debug(f"dump({prefix}):meta={self._switches_meta_data}")
+        _LOGGER.debug(f"dump({prefix}):meta={self._meta_data}")
+        _LOGGER.debug(f"dump({prefix}):devices={self._devices}")
         _LOGGER.debug(f"dump({prefix}):switches={self._switches}")
-        _LOGGER.debug(f"dump({prefix}):orphaned={self._orphaned_switches}")
+        _LOGGER.debug(f"dump({prefix}):orphaned={self._orphaned_devices}")
 
 
 class UpgradeCfg:
@@ -295,7 +337,7 @@ class UpgradeCfg:
         self._changed: bool = False
 
         self._switches = {}
-        self._switches_meta_data = {}
+        self._meta_data = {}
 
     def import_switch(self, switch):
         """ Import an original YAML entry.
@@ -311,15 +353,18 @@ class UpgradeCfg:
         unique_id = _make_original_unique_id(switch[ATTR_NAME])
         entity_id = _make_original_entity_id(Platform.SWITCH, switch[ATTR_NAME])
 
-        # Fix the name by removing a ! or adding a + as needed.
+        # Fix the name by removing a ! or adding a + as needed. Create new
+        # device id.
         switch[ATTR_NAME] = _map_config_name(switch[ATTR_NAME])
+        device_id = _make_device_id(switch[ATTR_NAME])
 
         # Add into the meta and user data.
         self._switches.update({
             unique_id: switch
         })
-        self._switches_meta_data.update({switch[ATTR_NAME]: {
+        self._meta_data.update({switch[ATTR_NAME]: {
             ATTR_UNIQUE_ID: unique_id,
+            ATTR_DEVICE_ID: device_id,
             ATTR_ENTITY_ID: entity_id
         }})
 
@@ -329,10 +374,10 @@ class UpgradeCfg:
 
     def save(self):
         # Update both database files.
-        _save_meta_data(self._group_name, self._switches_meta_data)
+        _save_meta_data(self._group_name, self._meta_data)
         _save_user_data(self._switches_file, self._switches)
         self.dump()
 
     def dump(self):
-        _LOGGER.debug(f"dump(import):meta={self._switches_meta_data}")
+        _LOGGER.debug(f"dump(import):meta={self._meta_data}")
         _LOGGER.debug(f"dump(import):switches={self._switches}")

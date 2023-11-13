@@ -62,15 +62,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     cfg.load()
 
     # Load and create devices.
-    for switch, values in cfg.switches.items():
-        _LOGGER.debug(f"would try to add {switch}")
+    for device, name in cfg.devices.items():
+        _LOGGER.debug(f"would try to add device {device}/{name}")
         # _LOGGER.debug(f"would try to add {values}")
-        await _async_get_or_create_momentary_device_in_registry(hass, entry, switch, values)
+        await _async_get_or_create_momentary_device_in_registry(hass, entry, device, name)
 
     # Delete orphaned entries.
-    for switch, values in cfg.orphaned_switches.items():
-        _LOGGER.debug(f"would try to delete {switch}")
-        await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
+    # for switch, values in cfg.orphaned_switches.items():
+    #     _LOGGER.debug(f"would try to delete {switch}")
+    #     await _async_delete_momentary_device_from_registry(hass, entry, switch, values)
 
     # Update hass data and queue entry creation.
     hass.data[COMPONENT_DOMAIN].update({
@@ -98,14 +98,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_get_or_create_momentary_device_in_registry(
-        hass: HomeAssistant, entry: ConfigEntry, unique_id, switch
+        hass: HomeAssistant, entry: ConfigEntry, device_id, name
 ) -> None:
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(COMPONENT_DOMAIN, unique_id)},
+        identifiers={(COMPONENT_DOMAIN, device_id)},
         manufacturer=COMPONENT_MANUFACTURER,
-        name=switch[CONF_NAME],
+        name=name,
         model=COMPONENT_MODEL,
         sw_version=__version__
     )
