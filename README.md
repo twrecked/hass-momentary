@@ -121,14 +121,30 @@ switches:
   toggle_for: 2
 ```
 
+You can group switches together under an umbrella device. To do this use a
+device name instead of `name:` as the first line of the switch entry. This
+config create a device with 3 entities:
+
+```yaml
+version: 1
+switches:
+- House Alarm:
+  - name: House to Armed Trigger
+    toggle_for: 1
+  - name: House to Disarmed Trigger
+    toggle_for: 1
+  - name: House to Home Trigger
+    toggle_for: 1
+```
+
 Once you've updated the file you will need to reload the component from its
 integration setting.
 
-The integration uses the name to distinguish different switches. If you can 
-the name of a switch the old name will be deleted and the new name created 
-on reload. 
+The integration uses the name to distinguish different switches. If you update
+the name of a switch the old name will be deleted and the new name created on
+reload. 
 
-The integration supports mutliple entries, you can use this group similar
+The integration supports multiple installs, you can use this group similar
 momentary devices together.
 
 ### Options
@@ -205,3 +221,4 @@ logger:
 
 If you can create a bug report with this debug output it would help me track 
 down the problem.
+
