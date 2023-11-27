@@ -4,8 +4,9 @@ This component provides support for a momentary switch.
 
 import logging
 import pprint
-import voluptuous as vol
 from collections.abc import Callable
+
+import voluptuous as vol
 from datetime import datetime
 from typing import Any
 
@@ -94,8 +95,6 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
                 self._timed_state = False
             _LOGGER.debug(f'new config, idle-state={self._idle_state}')
 
-        _LOGGER.info(f'MomentarySwitch: {self.name} created')
-
         # Home Assistant stuff.
         self.entity_id = config[ATTR_ENTITY_ID]
         self._attr_name = config.get(CONF_NAME)
@@ -105,6 +104,8 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             manufacturer=COMPONENT_MANUFACTURER,
             model=COMPONENT_MODEL,
         )
+
+        _LOGGER.info(f'MomentarySwitch: {self._attr_name} created')
 
     def _create_state(self):
         _LOGGER.info(f'Momentary {self.unique_id}: creating initial state')

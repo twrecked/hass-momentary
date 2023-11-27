@@ -16,7 +16,7 @@ from .const import *
 from .cfg import BlendedCfg
 
 
-__version__ = '0.7.0a4'
+__version__ = '0.7.0a5'
 
 _LOGGER = logging.getLogger(__name__)
 
