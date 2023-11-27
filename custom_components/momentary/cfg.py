@@ -25,6 +25,14 @@ _LOGGER = logging.getLogger(__name__)
 DB_LOCK = threading.Lock()
 
 
+def _fix_value(value):
+    """ If needed, convert value into a type that can be stored in yaml.
+    """
+    if isinstance(value, timedelta):
+        return max(value.seconds, 1)
+    return value
+
+
 def _load_meta_data(group_name: str):
     """Read in meta data for a particular group.
     """
@@ -379,6 +387,8 @@ class UpgradeCfg:
         """ Import an original YAML entry.
         """
 
+        _LOGGER.debug(f"import={switch}")
+
         # We remove the platform field. We deepcopy before doing this to
         # quiet down some startup errors.
         switch = copy.deepcopy(switch)
@@ -393,6 +403,9 @@ class UpgradeCfg:
         # device id.
         switch[ATTR_NAME] = _map_config_name(switch[ATTR_NAME])
         device_id = _make_device_id(switch[ATTR_NAME])
+
+        # Fix time deltas
+        switch = {k: _fix_value(v) for k, v in switch.items()}
 
         # Create switch data and meta data.
         self._switches.update({
