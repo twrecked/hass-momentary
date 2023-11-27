@@ -4,10 +4,9 @@ This component provides support for a momentary switch.
 
 import logging
 import pprint
-from collections.abc import Callable
-
 import voluptuous as vol
 from datetime import datetime
+from collections.abc import Callable
 from typing import Any
 
 import homeassistant.helpers.config_validation as cv
