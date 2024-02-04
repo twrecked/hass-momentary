@@ -1,3 +1,7 @@
+0.7.0a7:
+  fix upgrade issues
+    fix out of correct loop message
+    fix config path
 0.7.0a6:
   add import notice
 0.7.0a5:
