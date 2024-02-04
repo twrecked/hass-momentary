@@ -30,5 +30,10 @@ DEFAULT_IMPORTED_NAME = "import"
 DEFAULT_MODE = "old"
 DEFAULT_TOGGLE_FOR = timedelta(seconds=1)
 
-DB_DEFAULT_SWITCHES_FILE = "/config/momentary.yaml"
-DB_DEFAULT_SWITCHES_META_FILE = "/config/.storage/momentary.meta.json"
+
+def default_config_file(hass) -> str:
+    return hass.config.path("momentary.yaml")
+
+
+def default_meta_file(hass) -> str:
+    return hass.config.path(".storage/momentary.meta.json")

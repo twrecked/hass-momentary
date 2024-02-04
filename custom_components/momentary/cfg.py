@@ -33,12 +33,12 @@ def _fix_value(value):
     return value
 
 
-def _load_meta_data(group_name: str):
+def _load_meta_data(hass, group_name: str):
     """Read in meta data for a particular group.
     """
     with DB_LOCK:
         try:
-            with open(DB_DEFAULT_SWITCHES_META_FILE, "r") as meta_file:
+            with open(default_meta_file(hass), "r") as meta_file:
                 meta_data = json.load(meta_file)
                 return (
                     meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
@@ -49,7 +49,7 @@ def _load_meta_data(group_name: str):
     return {}
 
 
-def _save_meta_data(group_name: str, device_meta_data, group_switches):
+def _save_meta_data(hass, group_name: str, device_meta_data, group_switches):
     """Save meta data for a particular group name.
     """
     with DB_LOCK:
@@ -58,7 +58,7 @@ def _save_meta_data(group_name: str, device_meta_data, group_switches):
         switches = {}
         devices = {}
         try:
-            with open(DB_DEFAULT_SWITCHES_META_FILE, "r") as meta_file:
+            with open(default_meta_file(hass), "r") as meta_file:
                 meta_data = json.load(meta_file)
                 devices = meta_data.get(ATTR_DEVICES, {})
                 switches = meta_data.get(ATTR_SWITCHES, {})
@@ -79,7 +79,7 @@ def _save_meta_data(group_name: str, device_meta_data, group_switches):
 
         # Write it back out.
         try:
-            with open(DB_DEFAULT_SWITCHES_META_FILE, "w") as meta_file:
+            with open(default_meta_file(hass), "w") as meta_file:
                 json.dump({
                     ATTR_VERSION: 1,
                     ATTR_DEVICES: devices,
@@ -89,7 +89,7 @@ def _save_meta_data(group_name: str, device_meta_data, group_switches):
             _LOGGER.debug(f"couldn't save meta data {str(e)}")
 
 
-def _delete_meta_data(group_name: str):
+def _delete_meta_data(hass, group_name: str):
     """Save meta data for a particular group name.
     """
     with DB_LOCK:
@@ -97,7 +97,7 @@ def _delete_meta_data(group_name: str):
         # Read in current meta data
         switches = {}
         try:
-            with open(DB_DEFAULT_SWITCHES_META_FILE, "r") as meta_file:
+            with open(default_meta_file(hass), "r") as meta_file:
                 meta_data = json.load(meta_file)
                 devices = meta_data.get(ATTR_DEVICES, {})
                 switches = meta_data.get(ATTR_SWITCHES, {})
@@ -114,7 +114,7 @@ def _delete_meta_data(group_name: str):
 
         # Write it back out.
         try:
-            with open(DB_DEFAULT_SWITCHES_META_FILE, "w") as meta_file:
+            with open(default_meta_file(hass), "w") as meta_file:
                 json.dump({
                     ATTR_VERSION: 1,
                     ATTR_DEVICES: devices,
@@ -196,15 +196,16 @@ class BlendedCfg:
     """ Manage the momentary switch database.
     
     We have 2 data points:
-    - DB_DEFAULT_SWITCHES_FILE; where the user configures their switches, we create
+    - default_config_file(self.hass); where the user configures their switches, we create
       this the first time the config flow code is run
-    - DB_DEFAULT_SWITCHES_META_FILE; where we map the user entries to their unique ids
+    - default_meta_file(hass); where we map the user entries to their unique ids
 
     When we load we match the user list against our meta list and update
     entries as needed.
     """
 
-    def __init__(self, group_name: str, file: str):
+    def __init__(self, hass, group_name: str, file: str):
+        self._hass = hass
         self._group_name = group_name
         self._switches_file = file
         self._changed: bool = False
@@ -300,7 +301,7 @@ class BlendedCfg:
             # Read in the known meta data. We put this into a temporary
             # variable for now. Anything we find in the user list is moved into
             # the permanent variable. Anything left is orphaned.
-            self._dmeta_data_in, self._smeta_data_in = _load_meta_data(self._group_name)
+            self._dmeta_data_in, self._smeta_data_in = _load_meta_data(self._hass, self._group_name)
 
             # Parse out the user data. We have 2 formats:
             # - `name:` this indicates a device/entity with a one to one mapping
@@ -332,7 +333,7 @@ class BlendedCfg:
 
             # Make sure changes are kept.
             if self._changed:
-                _save_meta_data(self._group_name, self._dmeta_data, self._smeta_data)
+                _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
                 self._changed = False
 
             self.dump()
@@ -362,8 +363,8 @@ class BlendedCfg:
         return self._switches
 
     @staticmethod
-    def delete_group(group_name: str):
-        _delete_meta_data(group_name)
+    def delete_group(hass, group_name: str):
+        _delete_meta_data(hass, group_name)
 
     def dump(self):
         _LOGGER.debug(f"dump(load):devices={self._devices}")
@@ -375,13 +376,17 @@ class BlendedCfg:
 
 class UpgradeCfg:
 
-    def __init__(self, group_name: str, file: str):
+    def __init__(self, hass, group_name: str, file: str):
+        self._hass = hass
         self._group_name = group_name
         self._switches_file = file
 
         self._dmeta_data = {}
         self._switches = {}
         self._smeta_data = {}
+
+        _LOGGER.debug(f"new-config-file={default_config_file(self._hass)}")
+        _LOGGER.debug(f"new-meta-file={default_meta_file(self._hass)}")
 
     def import_switch(self, switch):
         """ Import an original YAML entry.
@@ -425,7 +430,7 @@ class UpgradeCfg:
 
     def save(self):
         # Update both database files.
-        _save_meta_data(self._group_name, self._dmeta_data, self._smeta_data)
+        _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
         _save_user_data(self._switches_file, self._switches)
         self.dump()
 
