@@ -24,12 +24,12 @@ from .const import *
 from .cfg import BlendedCfg
 
 
-__version__ = '0.7.0a6'
+__version__ = "0.7.0a7"
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up an momentary component.
     """
     hass.data.setdefault(COMPONENT_DOMAIN, {})
@@ -81,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Database of devices
     group_name = entry.data[ATTR_GROUP_NAME]
     file_name = entry.data[ATTR_FILE_NAME]
-    cfg = BlendedCfg(group_name, file_name)
+    cfg = BlendedCfg(hass, group_name, file_name)
     cfg.load()
 
     # Load and create devices.
@@ -113,7 +113,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(f"unloading it {entry.data[ATTR_GROUP_NAME]}")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
-        BlendedCfg.delete_group(entry.data[ATTR_GROUP_NAME])
+        BlendedCfg.delete_group(hass, entry.data[ATTR_GROUP_NAME])
         cfg = hass.data[COMPONENT_DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
         for device, name in cfg[ATTR_DEVICES].items():
             await _async_delete_momentary_device_from_registry(hass, entry, device, name)

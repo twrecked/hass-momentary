@@ -40,7 +40,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
             try:
                 info = await self.validate_input(user_input)
 
-                cfg = BlendedCfg(user_input[ATTR_GROUP_NAME], user_input[ATTR_FILE_NAME])
+                cfg = BlendedCfg(self.hass, user_input[ATTR_GROUP_NAME], user_input[ATTR_FILE_NAME])
                 cfg.load()
                 return self.async_create_entry(title=info["title"], data={
                     ATTR_GROUP_NAME: user_input[ATTR_GROUP_NAME],
@@ -56,7 +56,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
             # Fill in some defaults.
             user_input = {
                 ATTR_GROUP_NAME: DEFAULT_IMPORTED_NAME,
-                ATTR_FILE_NAME: DB_DEFAULT_SWITCHES_FILE
+                ATTR_FILE_NAME: default_config_file(self.hass)
             }
 
         return self.async_show_form(
@@ -73,7 +73,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
         # Extract the momentary devices in the yaml file. The import function
         # converts it.
         _LOGGER.info("importing YAML switches into default group")
-        cfg = UpgradeCfg(DEFAULT_IMPORTED_NAME, DB_DEFAULT_SWITCHES_FILE)
+        cfg = UpgradeCfg(self.hass, DEFAULT_IMPORTED_NAME, default_config_file(self.hass))
         for switch in import_data:
             if switch[CONF_PLATFORM] == COMPONENT_DOMAIN:
                 cfg.import_switch(switch)
@@ -82,7 +82,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
         # Store keys in momentary config.
         return self.async_create_entry(title=f"{DEFAULT_IMPORTED_NAME} {COMPONENT_DOMAIN}", data={
             ATTR_GROUP_NAME: DEFAULT_IMPORTED_NAME,
-            ATTR_FILE_NAME: DB_DEFAULT_SWITCHES_FILE,
+            ATTR_FILE_NAME: default_config_file(self.hass),
             ATTR_SWITCHES: list(cfg.switch_keys)
         })
 
