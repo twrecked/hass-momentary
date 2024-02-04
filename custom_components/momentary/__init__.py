@@ -24,12 +24,12 @@ from .const import *
 from .cfg import BlendedCfg
 
 
-__version__ = '0.7.0a6'
+__version__ = "0.7.0a7"
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up an momentary component.
     """
     hass.data.setdefault(COMPONENT_DOMAIN, {})
