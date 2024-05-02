@@ -207,7 +207,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
 
         # Make sure system gets updated.
         self._update_attributes()
-        self.async_schedule_update_ha_state()
+        self.schedule_update_ha_state()
 
     def turn_on(self, **kwargs):
         self._start_activity(True)
