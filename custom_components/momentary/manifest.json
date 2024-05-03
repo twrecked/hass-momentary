@@ -5,6 +5,6 @@
   "dependencies": [],
   "codeowners": ["@sherrell"],
   "requirements": [],
-  "version": "0.6.3",
+  "version": "0.6.4",
   "iot_class": "local_push"
 }
