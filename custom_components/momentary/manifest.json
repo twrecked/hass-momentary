@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/twrecked/hass-momentary/issues",
   "requirements": [],
-  "version": "0.7.0b8"
+  "version": "0.7.0b9"
 }
