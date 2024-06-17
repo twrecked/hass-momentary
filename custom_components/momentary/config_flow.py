@@ -11,7 +11,7 @@ from homeassistant.const import CONF_PLATFORM
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import *
-from .cfg import BlendedCfg, UpgradeCfg
+from .cfg import UpgradeCfg
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,12 +40,9 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
             try:
                 info = await self.validate_input(user_input)
 
-                cfg = BlendedCfg(self.hass, user_input[ATTR_GROUP_NAME], user_input[ATTR_FILE_NAME])
-                cfg.load()
                 return self.async_create_entry(title=info["title"], data={
                     ATTR_GROUP_NAME: user_input[ATTR_GROUP_NAME],
                     ATTR_FILE_NAME: user_input[ATTR_FILE_NAME],
-                    ATTR_SWITCHES: list(cfg.switches.keys())
                 })
             except GroupNameAlreadyUsed as _e:
                 errors["base"] = "group_name_used"
@@ -77,7 +74,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
         for switch in import_data:
             if switch[CONF_PLATFORM] == COMPONENT_DOMAIN:
                 cfg.import_switch(switch)
-        cfg.save()
+        await cfg.async_save()
 
         # Store keys in momentary config.
         return self.async_create_entry(title=f"{DEFAULT_IMPORTED_NAME} {COMPONENT_DOMAIN}", data={

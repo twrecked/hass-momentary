@@ -2,10 +2,10 @@
 This component provides support for a momentary switch.
 """
 
+import aiofiles
 import copy
 import logging
 import json
-import threading
 import uuid
 
 from homeassistant.const import (
@@ -15,14 +15,12 @@ from homeassistant.const import (
     Platform
 )
 from homeassistant.util import slugify
-from homeassistant.util.yaml import load_yaml, save_yaml
+from homeassistant.util.yaml import parse_yaml, dump
 
 from .const import *
 
 
 _LOGGER = logging.getLogger(__name__)
-
-DB_LOCK = threading.Lock()
 
 
 def _fix_value(value):
@@ -33,113 +31,122 @@ def _fix_value(value):
     return value
 
 
-def _load_meta_data(hass, group_name: str):
+async def _async_load_json(file_name):
+    _LOGGER.debug("_async_load_yaml1 file_name for %s", file_name)
+    try:
+        async with aiofiles.open(file_name, 'r') as meta_file:
+            _LOGGER.debug("_async_load_yaml2 file_name for %s", file_name)
+            contents = await meta_file.read()
+            _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+            return json.loads(contents)
+    except Exception as e:
+        _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+        return {}
+
+
+async def _async_save_json(file_name, data):
+    _LOGGER.debug("_async_save_yaml1 file_name for %s", file_name)
+    try:
+        async with aiofiles.open(file_name, 'w') as meta_file:
+            data = json.dumps(data, indent=4)
+            await meta_file.write(data)
+    except Exception as e:
+        _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+
+
+async def _async_load_yaml(file_name):
+    _LOGGER.debug("_async_load_yaml1 file_name for %s", file_name)
+    try:
+        async with aiofiles.open(file_name, 'r') as meta_file:
+            _LOGGER.debug("_async_load_yaml2 file_name for %s", file_name)
+            contents = await meta_file.read()
+            _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+            return parse_yaml(contents)
+    except Exception as e:
+        _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+        return {}
+
+
+async def _async_save_yaml(file_name, data):
+    _LOGGER.debug("_async_save_yaml1 file_name for %s", file_name)
+    try:
+        async with aiofiles.open(file_name, 'w') as meta_file:
+            data = dump(data)
+            await meta_file.write(data)
+    except Exception as e:
+        _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
+
+
+async def _load_meta_data(hass, group_name: str):
     """Read in meta data for a particular group.
     """
-    with DB_LOCK:
-        try:
-            with open(default_meta_file(hass), "r") as meta_file:
-                meta_data = json.load(meta_file)
-                return (
-                    meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
-                    meta_data.get(ATTR_SWITCHES, {}).get(group_name, {})
-                )
-        except Exception as e:
-            _LOGGER.debug(f"failed to read meta data {str(e)}")
-    return {}
+    meta_data = await _async_load_json(default_meta_file(hass))
+    return (
+        meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
+        meta_data.get(ATTR_SWITCHES, {}).get(group_name, {})
+    )
 
 
-def _save_meta_data(hass, group_name: str, device_meta_data, group_switches):
+async def _save_meta_data(hass, group_name: str, device_meta_data, group_switches):
     """Save meta data for a particular group name.
     """
-    with DB_LOCK:
+    # Read in current meta data
+    meta_data = await _async_load_json(default_meta_file(hass))
+    devices = meta_data.get(ATTR_DEVICES, {})
+    switches = meta_data.get(ATTR_SWITCHES, {})
 
-        # Read in current meta data
-        switches = {}
-        devices = {}
-        try:
-            with open(default_meta_file(hass), "r") as meta_file:
-                meta_data = json.load(meta_file)
-                devices = meta_data.get(ATTR_DEVICES, {})
-                switches = meta_data.get(ATTR_SWITCHES, {})
-        except Exception as e:
-            _LOGGER.debug(f"no meta data yet {str(e)}")
+    # Update (or add) the group piece.
+    _LOGGER.debug(f"device meta before {devices}")
+    _LOGGER.debug(f"switch meta before {switches}")
+    switches.update({
+        group_name: group_switches
+    })
+    devices.update({
+        group_name: device_meta_data
+    })
+    _LOGGER.debug(f"device meta after {devices}")
+    _LOGGER.debug(f"switch meta after {switches}")
 
-        # Update (or add) the group piece.
-        _LOGGER.debug(f"device meta before {devices}")
-        _LOGGER.debug(f"switch meta before {switches}")
-        switches.update({
-            group_name: group_switches
-        })
-        devices.update({
-            group_name: device_meta_data
-        })
-        _LOGGER.debug(f"device meta after {devices}")
-        _LOGGER.debug(f"switch meta after {switches}")
-
-        # Write it back out.
-        try:
-            with open(default_meta_file(hass), "w") as meta_file:
-                json.dump({
-                    ATTR_VERSION: 1,
-                    ATTR_DEVICES: devices,
-                    ATTR_SWITCHES: switches
-                }, meta_file, indent=4)
-        except Exception as e:
-            _LOGGER.debug(f"couldn't save meta data {str(e)}")
+    await _async_save_json(default_meta_file(hass), {
+        ATTR_VERSION: 1,
+        ATTR_DEVICES: devices,
+        ATTR_SWITCHES: switches
+    })
 
 
-def _delete_meta_data(hass, group_name: str):
+async def _delete_meta_data(hass, group_name: str):
     """Save meta data for a particular group name.
     """
-    with DB_LOCK:
+    # Read in current meta data
+    meta_data = await _async_load_json(default_meta_file(hass))
+    devices = meta_data.get(ATTR_DEVICES, {})
+    switches = meta_data.get(ATTR_SWITCHES, {})
 
-        # Read in current meta data
-        switches = {}
-        try:
-            with open(default_meta_file(hass), "r") as meta_file:
-                meta_data = json.load(meta_file)
-                devices = meta_data.get(ATTR_DEVICES, {})
-                switches = meta_data.get(ATTR_SWITCHES, {})
-        except Exception as e:
-            _LOGGER.debug(f"no meta data yet {str(e)}")
+    # Remove the group.
+    _LOGGER.debug(f"devices meta before {devices}")
+    _LOGGER.debug(f"switches meta before {switches}")
+    devices.pop(group_name)
+    switches.pop(group_name)
+    _LOGGER.debug(f"devices meta after {devices}")
+    _LOGGER.debug(f"switches meta after {switches}")
 
-        # Remove the group.
-        _LOGGER.debug(f"devices meta before {devices}")
-        _LOGGER.debug(f"switches meta before {switches}")
-        devices.pop(group_name)
-        switches.pop(group_name)
-        _LOGGER.debug(f"devices meta after {devices}")
-        _LOGGER.debug(f"switches meta after {switches}")
-
-        # Write it back out.
-        try:
-            with open(default_meta_file(hass), "w") as meta_file:
-                json.dump({
-                    ATTR_VERSION: 1,
-                    ATTR_DEVICES: devices,
-                    ATTR_SWITCHES: switches
-                }, meta_file, indent=4)
-        except Exception as e:
-            _LOGGER.debug(f"couldn't save meta data {str(e)}")
+    await _async_save_json(default_meta_file(hass), {
+        ATTR_VERSION: 1,
+        ATTR_DEVICES: devices,
+        ATTR_SWITCHES: switches
+    })
 
 
-def _load_user_data(switches_file: str):
-    try:
-        return load_yaml(switches_file).get(ATTR_SWITCHES, [])
-    except Exception as e:
-        _LOGGER.debug(f"failed to read switch data {str(e)}")
-    return {}
+async def _load_user_data(switches_file: str):
+    entities = await _async_load_yaml(switches_file)
+    return entities.get(ATTR_SWITCHES, {})
 
 
-def _save_user_data(switches_file: str, switches):
-    try:
-        save_yaml(switches_file, {
-            ATTR_VERSION: 1,
-            ATTR_SWITCHES: list(switches.values())
-        })
-    except Exception as e:
-        _LOGGER.debug(f"couldn't save user data {str(e)}")
+async def _save_user_data(switches_file: str, switches):
+    await _async_save_yaml(switches_file, {
+        ATTR_VERSION: 1,
+        ATTR_SWITCHES: list(switches.values())
+    })
 
 
 def _make_original_unique_id(name):
@@ -280,7 +287,7 @@ class BlendedCfg:
                 name: self._smeta_data_in.pop(name)
             })
 
-    def load(self) -> None:
+    async def async_load(self) -> None:
         """ Load switches from the database.
 
         They are stored as array because it makes it easier for the user to
@@ -301,13 +308,13 @@ class BlendedCfg:
             # Read in the known meta data. We put this into a temporary
             # variable for now. Anything we find in the user list is moved into
             # the permanent variable. Anything left is orphaned.
-            self._dmeta_data_in, self._smeta_data_in = _load_meta_data(self._hass, self._group_name)
+            self._dmeta_data_in, self._smeta_data_in = await _load_meta_data(self._hass, self._group_name)
 
             # Parse out the user data. We have 2 formats:
             # - `name:` this indicates a device/entity with a one to one mapping
             # - `a device name:`, any key other than `name`, this indicates a
             #   device with multiple entities, we use the key to find the device
-            for device_or_switch in _load_user_data(self._switches_file):
+            for device_or_switch in await _load_user_data(self._switches_file):
                 if CONF_NAME in device_or_switch:
                     device_name = device_or_switch[CONF_NAME]
                     self._parse_switches(device_name, [device_or_switch])
@@ -333,7 +340,7 @@ class BlendedCfg:
 
             # Make sure changes are kept.
             if self._changed:
-                _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
+                await _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
                 self._changed = False
 
             self.dump()
@@ -363,8 +370,8 @@ class BlendedCfg:
         return self._switches
 
     @staticmethod
-    def delete_group(hass, group_name: str):
-        _delete_meta_data(hass, group_name)
+    async def delete_group(hass, group_name: str):
+        await _delete_meta_data(hass, group_name)
 
     def dump(self):
         _LOGGER.debug(f"dump(load):devices={self._devices}")
@@ -428,10 +435,10 @@ class UpgradeCfg:
     def switch_keys(self):
         return self._switches.keys()
 
-    def save(self):
+    async def async_save(self):
         # Update both database files.
-        _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
-        _save_user_data(self._switches_file, self._switches)
+        await _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
+        await _save_user_data(self._switches_file, self._switches)
         self.dump()
 
     def dump(self):
