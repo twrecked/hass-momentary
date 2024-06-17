@@ -24,7 +24,7 @@ from .const import *
 from .cfg import BlendedCfg
 
 
-__version__ = "0.7.0b9"
+__version__ = "0.7.0b10"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     group_name = entry.data[ATTR_GROUP_NAME]
     file_name = entry.data[ATTR_FILE_NAME]
     cfg = BlendedCfg(hass, group_name, file_name)
-    cfg.load()
+    await cfg.async_load()
 
     # Load and create devices.
     for device, name in cfg.devices.items():
@@ -113,7 +113,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(f"unloading it {entry.data[ATTR_GROUP_NAME]}")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
-        BlendedCfg.delete_group(hass, entry.data[ATTR_GROUP_NAME])
+        await BlendedCfg.delete_group(hass, entry.data[ATTR_GROUP_NAME])
         cfg = hass.data[COMPONENT_DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
         for device, name in cfg[ATTR_DEVICES].items():
             await _async_delete_momentary_device_from_registry(hass, entry, device, name)
