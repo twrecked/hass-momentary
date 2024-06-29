@@ -3,6 +3,7 @@ This component provides support for a momentary switch.
 """
 
 import aiofiles
+import asyncio
 import copy
 import logging
 import json
@@ -21,6 +22,8 @@ from .const import *
 
 
 _LOGGER = logging.getLogger(__name__)
+
+_meta_lock = asyncio.Lock()
 
 
 def _fix_value(value):
@@ -80,61 +83,67 @@ async def _async_save_yaml(file_name, data):
 async def _load_meta_data(hass, group_name: str):
     """Read in meta data for a particular group.
     """
-    meta_data = await _async_load_json(default_meta_file(hass))
-    return (
-        meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
-        meta_data.get(ATTR_SWITCHES, {}).get(group_name, {})
-    )
+    async with _meta_lock:
+
+        meta_data = await _async_load_json(default_meta_file(hass))
+        return (
+            meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
+            meta_data.get(ATTR_SWITCHES, {}).get(group_name, {})
+        )
 
 
 async def _save_meta_data(hass, group_name: str, device_meta_data, group_switches):
     """Save meta data for a particular group name.
     """
-    # Read in current meta data
-    meta_data = await _async_load_json(default_meta_file(hass))
-    devices = meta_data.get(ATTR_DEVICES, {})
-    switches = meta_data.get(ATTR_SWITCHES, {})
+    async with _meta_lock:
 
-    # Update (or add) the group piece.
-    _LOGGER.debug(f"device meta before {devices}")
-    _LOGGER.debug(f"switch meta before {switches}")
-    switches.update({
-        group_name: group_switches
-    })
-    devices.update({
-        group_name: device_meta_data
-    })
-    _LOGGER.debug(f"device meta after {devices}")
-    _LOGGER.debug(f"switch meta after {switches}")
+        # Read in current meta data
+        meta_data = await _async_load_json(default_meta_file(hass))
+        devices = meta_data.get(ATTR_DEVICES, {})
+        switches = meta_data.get(ATTR_SWITCHES, {})
 
-    await _async_save_json(default_meta_file(hass), {
-        ATTR_VERSION: 1,
-        ATTR_DEVICES: devices,
-        ATTR_SWITCHES: switches
-    })
+        # Update (or add) the group piece.
+        _LOGGER.debug(f"device meta before {devices}")
+        _LOGGER.debug(f"switch meta before {switches}")
+        switches.update({
+            group_name: group_switches
+        })
+        devices.update({
+            group_name: device_meta_data
+        })
+        _LOGGER.debug(f"device meta after {devices}")
+        _LOGGER.debug(f"switch meta after {switches}")
+
+        await _async_save_json(default_meta_file(hass), {
+            ATTR_VERSION: 1,
+            ATTR_DEVICES: devices,
+            ATTR_SWITCHES: switches
+        })
 
 
 async def _delete_meta_data(hass, group_name: str):
     """Save meta data for a particular group name.
     """
-    # Read in current meta data
-    meta_data = await _async_load_json(default_meta_file(hass))
-    devices = meta_data.get(ATTR_DEVICES, {})
-    switches = meta_data.get(ATTR_SWITCHES, {})
+    async with _meta_lock:
 
-    # Remove the group.
-    _LOGGER.debug(f"devices meta before {devices}")
-    _LOGGER.debug(f"switches meta before {switches}")
-    devices.pop(group_name)
-    switches.pop(group_name)
-    _LOGGER.debug(f"devices meta after {devices}")
-    _LOGGER.debug(f"switches meta after {switches}")
+        # Read in current meta data
+        meta_data = await _async_load_json(default_meta_file(hass))
+        devices = meta_data.get(ATTR_DEVICES, {})
+        switches = meta_data.get(ATTR_SWITCHES, {})
 
-    await _async_save_json(default_meta_file(hass), {
-        ATTR_VERSION: 1,
-        ATTR_DEVICES: devices,
-        ATTR_SWITCHES: switches
-    })
+        # Remove the group.
+        _LOGGER.debug(f"devices meta before {devices}")
+        _LOGGER.debug(f"switches meta before {switches}")
+        devices.pop(group_name)
+        switches.pop(group_name)
+        _LOGGER.debug(f"devices meta after {devices}")
+        _LOGGER.debug(f"switches meta after {switches}")
+
+        await _async_save_json(default_meta_file(hass), {
+            ATTR_VERSION: 1,
+            ATTR_DEVICES: devices,
+            ATTR_SWITCHES: switches
+        })
 
 
 async def _load_user_data(switches_file: str):
