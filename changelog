@@ -1,5 +1,6 @@
 0.7.0b12:
   Use async calls
+  add github actions
 0.7.0b11:
   Fix race writing meta data
 0.7.0b10:
