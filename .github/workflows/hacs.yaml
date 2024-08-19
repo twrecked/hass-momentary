@@ -1,0 +1,20 @@
+name: HACS Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  hacs:
+    name: HACS Validation
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: HACS Validation
+        uses: "hacs/action@main"
+        with:
+          category: "integration"
