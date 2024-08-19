@@ -16,7 +16,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.core import HassJob
+from homeassistant.core import HassJob, callback
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_point_in_time
@@ -151,6 +151,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             self._restore_state(state)
         self._update_attributes()
 
+    @callback
     async def _async_stop_activity(self, *_args: Any) -> None:
         """ Turn the switch to idle state.
         Before doing that make sure:
@@ -169,9 +170,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
                 _LOGGER.debug(f"too soon, restarting {self.name} timer")
                 self._timer = async_track_point_in_time(
                     self.hass,
-                    HassJob(
-                        self._async_stop_activity
-                    ),
+                    HassJob(self._async_stop_activity),
                     self._toggle_until
                 )
         else:
@@ -189,9 +188,7 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             self._toggle_until = dt_util.utcnow() + self._toggle_for
             self._timer = async_track_point_in_time(
                 self.hass,
-                HassJob(
-                    self._async_stop_activity
-                ),
+                HassJob(self._async_stop_activity),
                 self._toggle_until
             )
 
@@ -209,8 +206,8 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         self._update_attributes()
         self.schedule_update_ha_state()
 
-    def turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
         self._start_activity(True)
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs: Any) -> None:
         self._start_activity(False)
