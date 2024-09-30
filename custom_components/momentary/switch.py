@@ -12,16 +12,23 @@ from typing import Any
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 from homeassistant.components.switch import (
+    DOMAIN as PLATFORM_DOMAIN,
     SwitchEntity,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.core import HassJob, callback
+from homeassistant.core import (
+    callback,
+    HassJob,
+    HomeAssistant,
+)
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.util import slugify
 
 from .const import *
 
@@ -45,8 +52,21 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(BASE_SCHEMA)
 SWITCH_SCHEMA = vol.Schema(BASE_SCHEMA)
 
 
+async def async_setup_platform(
+        hass: HomeAssistant,
+        config: ConfigType,
+        async_add_entities: AddEntitiesCallback,
+        _discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    if hass.data[COMPONENT_CONFIG].get(CONF_YAML_CONFIG, False):
+        _LOGGER.debug("setting up old config...")
+
+        switches = [MomentarySwitch(None, config)]
+        async_add_entities(switches, True)
+
+
 async def async_setup_entry(
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         entry: ConfigEntry,
         async_add_entities: Callable[[list], None],
 ) -> None:
@@ -57,7 +77,7 @@ async def async_setup_entry(
     for switch, values in hass.data[COMPONENT_DOMAIN][entry.data[ATTR_GROUP_NAME]][ATTR_SWITCHES].items():
         values = SWITCH_SCHEMA(values)
         _LOGGER.debug(f"would try to add switch {switch}/{values}")
-        entities.append(MomentarySwitch(switch, values, hass))
+        entities.append(MomentarySwitch(switch, values))
 
     async_add_entities(entities)
 
@@ -65,11 +85,10 @@ async def async_setup_entry(
 class MomentarySwitch(RestoreEntity, SwitchEntity):
     """Representation of a Momentary switch."""
 
-    def __init__(self, unique_id, config, hass):
+    def __init__(self, unique_id, config):
         """Initialize the Momentary switch device."""
 
         _LOGGER.debug(f'{config}')
-        self._hass = hass
 
         # Get settings.
         self._mode = config.get(CONF_MODE, DEFAULT_MODE)
@@ -94,15 +113,29 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
                 self._timed_state = False
             _LOGGER.debug(f'new config, idle-state={self._idle_state}')
 
-        # Home Assistant stuff.
-        self.entity_id = config[ATTR_ENTITY_ID]
-        self._attr_name = config.get(CONF_NAME)
-        self._attr_unique_id = unique_id
-        self._attr_device_info = DeviceInfo(
-            identifiers={(COMPONENT_DOMAIN, config[ATTR_DEVICE_ID])},
-            manufacturer=COMPONENT_MANUFACTURER,
-            model=COMPONENT_MODEL,
-        )
+        if unique_id is None:
+            # Old style yaml config.
+            # Build name, entity id and unique id. We do this because historically
+            # the non-domain piece of the entity_id was prefixed with virtual_ so
+            # we build the pieces manually to make sure.
+            self._attr_name = config.get(CONF_NAME)
+            if self._attr_name.startswith("!"):
+                self._attr_name = self._attr_name[1:]
+                self.entity_id = f'{PLATFORM_DOMAIN}.{slugify(self._attr_name)}'
+            else:
+                self.entity_id = f'{PLATFORM_DOMAIN}.{COMPONENT_DOMAIN}_{slugify(self._attr_name)}'
+            self._attr_unique_id = slugify(self._attr_name)
+
+        else:
+            # New style integration config.
+            self.entity_id = config[ATTR_ENTITY_ID]
+            self._attr_name = config.get(CONF_NAME)
+            self._attr_unique_id = unique_id
+            self._attr_device_info = DeviceInfo(
+                identifiers={(COMPONENT_DOMAIN, config[ATTR_DEVICE_ID])},
+                manufacturer=COMPONENT_MANUFACTURER,
+                model=COMPONENT_MODEL,
+            )
 
         _LOGGER.info(f'MomentarySwitch: {self._attr_name} created')
 

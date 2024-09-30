@@ -5,6 +5,7 @@ This component provides support for a momentary switch.
 from __future__ import annotations
 
 import logging
+import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_SOURCE, Platform
@@ -13,6 +14,7 @@ from homeassistant.core import (
     HomeAssistant,
     callback
 )
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.issue_registry import (
     async_create_issue,
     IssueSeverity
@@ -28,41 +30,64 @@ __version__ = "0.7.0b12"
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = vol.Schema({
+    COMPONENT_DOMAIN: vol.Schema({
+        vol.Optional(CONF_YAML_CONFIG, default=False): cv.boolean,
+    }),
+},
+    extra=vol.ALLOW_EXTRA,
+)
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up an momentary component.
     """
-    hass.data.setdefault(COMPONENT_DOMAIN, {})
+    # hass.data.setdefault(COMPONENT_DOMAIN, {})
 
-    # See if we have already imported the data. If we haven't then do it now.
-    config_entry = _async_find_matching_config_entry(hass)
-    if not config_entry:
-        _LOGGER.debug('importing a YAML setup')
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                COMPONENT_DOMAIN,
-                context={CONF_SOURCE: SOURCE_IMPORT},
-                data=config.get(Platform.SWITCH, [])
+    if COMPONENT_DOMAIN not in hass.data:
+        hass.data[COMPONENT_DOMAIN] = {}
+        hass.data[COMPONENT_CONFIG] = {}
+
+    # See if yaml support was enabled.
+    if not config.get(COMPONENT_DOMAIN, {}).get(CONF_YAML_CONFIG, False):
+
+        # New style. We import old config if needed.
+        _LOGGER.debug("setting up new momentary components")
+        hass.data[COMPONENT_CONFIG][CONF_YAML_CONFIG] = False
+
+        # See if we have already imported the data. If we haven't then do it now.
+        config_entry = _async_find_matching_config_entry(hass)
+        if not config_entry:
+            _LOGGER.debug('importing a YAML setup')
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    COMPONENT_DOMAIN,
+                    context={CONF_SOURCE: SOURCE_IMPORT},
+                    data=config.get(Platform.SWITCH, [])
+                )
             )
-        )
 
-        async_create_issue(
-            hass,
-            HOMEASSISTANT_DOMAIN,
-            f"deprecated_yaml_{COMPONENT_DOMAIN}",
-            is_fixable=False,
-            issue_domain=COMPONENT_DOMAIN,
-            severity=IssueSeverity.WARNING,
-            translation_key="deprecated_yaml",
-            translation_placeholders={
-                "domain": COMPONENT_DOMAIN,
-                "integration_title": "Momentary",
-            },
-        )
+            async_create_issue(
+                hass,
+                HOMEASSISTANT_DOMAIN,
+                f"deprecated_yaml_{COMPONENT_DOMAIN}",
+                is_fixable=False,
+                issue_domain=COMPONENT_DOMAIN,
+                severity=IssueSeverity.WARNING,
+                translation_key="deprecated_yaml",
+                translation_placeholders={
+                    "domain": COMPONENT_DOMAIN,
+                    "integration_title": "Momentary",
+                },
+            )
 
-        return True
+        else:
+            _LOGGER.debug('ignoring a YAML setup')
 
-    _LOGGER.debug('ignoring a YAML setup')
+    else:
+        _LOGGER.debug("setting up old momentary components")
+        hass.data[COMPONENT_CONFIG][CONF_YAML_CONFIG] = True
+
     return True
 
 
@@ -77,6 +102,10 @@ def _async_find_matching_config_entry(hass):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(f'async setup {entry.data}')
+
+    if COMPONENT_DOMAIN not in hass.data:
+        hass.data[COMPONENT_DOMAIN] = {}
+        hass.data[COMPONENT_CONFIG] = {}
 
     # Database of devices
     group_name = entry.data[ATTR_GROUP_NAME]

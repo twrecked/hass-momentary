@@ -5,6 +5,7 @@ This component provides support for a momentary switch.
 from datetime import timedelta
 
 COMPONENT_DOMAIN = "momentary"
+COMPONENT_CONFIG = "momentary-config"
 COMPONENT_MANUFACTURER = "twrecked"
 COMPONENT_MODEL = "momentary"
 
@@ -24,6 +25,7 @@ CONF_CANCELLABLE = "cancellable"
 CONF_MODE = "mode"
 CONF_NAME = "name"
 CONF_TOGGLE_FOR = "toggle_for"
+CONF_YAML_CONFIG = "yaml_config"
 
 DEFAULT_CANCELLABLE = False
 DEFAULT_IMPORTED_NAME = "import"
