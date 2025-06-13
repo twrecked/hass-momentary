@@ -1,3 +1,5 @@
+0.7.0b13:
+  fix start up issue
 0.7.0b12:
   Use async calls
   add github actions
