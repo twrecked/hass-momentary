@@ -26,7 +26,7 @@ from .const import *
 from .cfg import BlendedCfg
 
 
-__version__ = "0.7.0b12"
+__version__ = "0.7.0b13"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
     })
     _LOGGER.debug(f"update hass data {hass.data[COMPONENT_DOMAIN]}")
-    await hass.config_entries.async_forward_entry_setup(entry, Platform.SWITCH)
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SWITCH])
 
     return True
 
