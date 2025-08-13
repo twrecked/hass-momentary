@@ -1,4 +1,4 @@
-# **Momentary devices for Home Asistant**
+# **Momentary devices for Home Assistant**
 
 _Momentary_ is a component that provides momentary switches for _Home
 Assistant_. That is, it provides a simple switch that once turned on will
@@ -16,27 +16,27 @@ momentary:
   yaml_config: True
 ```
 
-<!-- TOC -->
-* [**Momentary devices for Home Asistant**](#momentary-devices-for-home-asistant)
-* [!!!BREAKING CHANGES!!!](#breaking-changes)
-* [Introduction](#introduction)
-  * [Notes](#notes)
-  * [Version 0.6 Documentation](#version-06-documentation)
-  * [Thanks](#thanks)
-* [Installation](#installation)
-  * [HACS](#hacs)
-  * [Manually](#manually)
-  * [From Script](#from-script)
-* [Component Configuration](#component-configuration)
-* [Entity Configuration](#entity-configuration)
-  * [Options](#options)
-* [Upgrade Notes](#upgrade-notes)
-  * [After the Upgrade](#after-the-upgrade)
-  * [Names](#names)
-  * [`unique_id`](#unique_id)
-  * [Known Issues](#known-issues)
-* [Turning on Debug](#turning-on-debug)
-<!-- TOC -->
+<!--toc:start-->
+- [**Momentary devices for Home Assistant**](#momentary-devices-for-home-assistant)
+- [!!!BREAKING CHANGES!!!](#breaking-changes)
+- [Introduction](#introduction)
+  - [Notes](#notes)
+  - [Version 0.6 Documentation](#version-06-documentation)
+  - [Thanks](#thanks)
+- [Installation](#installation)
+  - [HACS](#hacs)
+  - [Manually](#manually)
+  - [From Script](#from-script)
+- [Component Configuration](#component-configuration)
+- [Entity Configuration](#entity-configuration)
+  - [Options](#options)
+- [Upgrade Notes](#upgrade-notes)
+  - [After the Upgrade](#after-the-upgrade)
+  - [Names](#names)
+  - [`unique_id`](#uniqueid)
+  - [Known Issues](#known-issues)
+- [Turning on Debug](#turning-on-debug)
+<!--toc:end-->
 
 # Introduction
 
@@ -82,10 +82,10 @@ install go /config
 
 # Component Configuration
 
-- `yaml_config`; set to `True` to enable backwards compatability, set to `False`
+- `yaml_config`; set to `True` to enable backwards compatibility, set to `False`
   to disable it. The default is `False`.
 
-For example, this enable backwards compatability.
+For example, this enable backwards compatibility.
 
 ```yaml
 virtual:
@@ -231,7 +231,7 @@ and they disappear once you remove the legacy configuration.
 
 # Turning on Debug
 
-If you do run into issues you can enable debug with the following configration.
+If you do run into issues you can enable debug with the following configuration.
 
 ```yaml
 logger:
