@@ -54,12 +54,6 @@ mapped to `/config` inside my docker container.
 ## Thanks
 
 Many thanks to:
-* [JetBrains](https://www.jetbrains.com/?from=hass-aarlo) for the excellent
-  **PyCharm IDE** and providing me with an open source license to speed up the
-  project development.
- 
-  [![JetBrains](/images/jetbrains.svg)](https://www.jetbrains.com/?from=hass-aarlo)
-
 * Icon adapted from [svg icons](https://www.onlinewebfonts.com/icon)
   and is licensed by CC BY 4.0
 
