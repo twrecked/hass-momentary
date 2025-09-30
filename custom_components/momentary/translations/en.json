@@ -1,18 +1,50 @@
 {
-  "title": "Momentary Devices",
+  "title": "Momentary Switches",
   "config": {
-    "error": {
-      "group_name_used": "That group name is already in use, try another.",
-      "file_name_used": "That file name is already in use, try another."
-    },
     "step": {
       "user": {
-        "title": "Momentary Database",
-        "description": "Enter the group name and path to a file containing the momentary devices. If it does not exist an empty one will be created.",
         "data": {
-          "group_name": "Group",
-          "file_name": "File"
+          "name": "Switch Name",
+          "mode": "Mode",
+          "toggle_for": "Toggle Duration",
+          "cancellable": "Cancellable",
+          "device_id": "Associate with another device"
+        },
+        "data_description": {
+          "mode": "Whether the switch is momentary ON or momentary OFF",
+          "toggle_for": "Amount of time to toggle the switch for",
+          "cancellable": "Allow the switch to be untoggled manually"
         }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "name": "Switch Name",
+          "mode": "Mode",
+          "toggle_for": "Toggle Duration",
+          "cancellable": "Cancellable",
+          "device_id": "Associate with another device",
+          "clear_device_id": "Clear device association"
+        },
+        "data_description": {
+          "mode": "Whether the switch is momentary ON or momentary OFF",
+          "toggle_for": "Amount of time to toggle the switch for",
+          "cancellable": "Allow the switch to be untoggled manually"
+        }
+      }
+    },
+    "abort": {
+      "yaml_switch": "Cannot change options here for Momentary Switches created by YAML.\n\nTo use the User Interface to manage this Momentary Switch, you will need to:\n1. Remove it from YAML\n2. Restart Home Assistant\n3. Manually recreate it in Home Assistant, Integrations, +Add Integration."
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "on": "On",
+        "off": "Off"
       }
     }
   }
