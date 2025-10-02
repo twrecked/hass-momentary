@@ -1,8 +1,12 @@
-"""
-This component provides support for a momentary switch.
+"""Provide constants and helper functions for the momentary integration.
+
+This module defines commonly used string constants and small helpers used
+by the integration code.
 """
 
 from datetime import timedelta
+
+from homeassistant.core import HomeAssistant
 
 COMPONENT_DOMAIN = "momentary"
 COMPONENT_CONFIG = "momentary-config"
@@ -33,9 +37,11 @@ DEFAULT_MODE = "old"
 DEFAULT_TOGGLE_FOR = timedelta(seconds=1)
 
 
-def default_config_file(hass) -> str:
+def default_config_file(hass: HomeAssistant) -> str:
+    """Return the default path to the user YAML configuration file."""
     return hass.config.path("momentary.yaml")
 
 
-def default_meta_file(hass) -> str:
+def default_meta_file(hass: HomeAssistant) -> str:
+    """Return the default path to the integration meta storage file."""
     return hass.config.path(".storage/momentary.meta.json")

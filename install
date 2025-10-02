@@ -11,7 +11,7 @@ DEST="${1}"
 if [[ -z "${DEST}" ]]; then
 	echo "*** please supply the home-assistant /config directory"
 	exit 1
-fi	
+fi
 if [[ ! -d "${DEST}" ]]; then
 	echo "*** please make sure the destination directory exists"
 	exit 1
