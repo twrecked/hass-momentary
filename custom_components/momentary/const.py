@@ -1,47 +1,35 @@
-"""Provide constants and helper functions for the momentary integration.
+"""Provide constants for the momentary integration.
 
-This module defines commonly used string constants and small helpers used
-by the integration code.
+This module defines commonly used constants for configuration,
+defaults, and attributes used by the integration.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from homeassistant.core import HomeAssistant
+from homeassistant.const import CONF_DEVICE_ID, CONF_NAME  # noqa: F401
 
-COMPONENT_DOMAIN = "momentary"
-COMPONENT_CONFIG = "momentary-config"
-COMPONENT_MANUFACTURER = "twrecked"
-COMPONENT_MODEL = "momentary"
+VERSION = "0.7.0b13"
+DOMAIN = "momentary"
 
-ATTR_DEVICES = "devices"
-ATTR_DEVICE_ID = "device_id"
-ATTR_FILE_NAME = "file_name"
-ATTR_GROUP_NAME = "group_name"
 ATTR_IDLE_STATE = "idle_state"
-ATTR_SWITCH = "switch"
-ATTR_SWITCHES = "switches"
 ATTR_TIMED_STATE = "timed_state"
 ATTR_TOGGLE_UNTIL = "toggle_until"
-ATTR_UNIQUE_ID = "unique_id"
-ATTR_VERSION = "version"
 
 CONF_CANCELLABLE = "cancellable"
 CONF_MODE = "mode"
-CONF_NAME = "name"
 CONF_TOGGLE_FOR = "toggle_for"
-CONF_YAML_CONFIG = "yaml_config"
+CONF_ID_TOKEN = "id_token"
+CONF_YAML_PRESENT = "yaml_present"
+CONF_YAML_SWITCH = "yaml_switch"
+CONF_DEVICE_ASSOCIATION = "device_association"
+CONF_CLEAR_DEVICE_ID = "clear_device_id"
 
 DEFAULT_CANCELLABLE = False
-DEFAULT_IMPORTED_NAME = "import"
-DEFAULT_MODE = "old"
-DEFAULT_TOGGLE_FOR = timedelta(seconds=1)
+DEFAULT_MODE = True
+DEFAULT_MODE_STR = "on"
+DEFAULT_TOGGLE_FOR = {"hours": 0, "minutes": 0, "seconds": 1}
+DEFAULT_TOGGLE_FOR_TIMEDELTA = timedelta(**DEFAULT_TOGGLE_FOR)
+DEFAULT_CLEAR_DEVICE_ID = False
 
-
-def default_config_file(hass: HomeAssistant) -> str:
-    """Return the default path to the user YAML configuration file."""
-    return hass.config.path("momentary.yaml")
-
-
-def default_meta_file(hass: HomeAssistant) -> str:
-    """Return the default path to the integration meta storage file."""
-    return hass.config.path(".storage/momentary.meta.json")
+DEFAULT_TOGGLE_UNTIL_STR = "1970-01-01T00:00:00+00:00"
+DEFAULT_TOGGLE_UNTIL = datetime.fromisoformat(DEFAULT_TOGGLE_UNTIL_STR)

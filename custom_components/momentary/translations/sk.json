@@ -1,18 +1,50 @@
 {
-  "title": "Momentálne zariadenia",
+  "title": "Momentálne spínače",
   "config": {
-    "error": {
-      "group_name_used": "Tento názov skupiny sa už používa, skúste iný.",
-      "file_name_used": "Tento názov súboru sa už používa, skúste iný."
-    },
     "step": {
       "user": {
-        "title": "Momentálna databáza",
-        "description": "Zadajte názov skupiny a cestu k súboru obsahujúcemu momentálne zariadenia. Ak neexistuje, vytvorí sa prázdny.",
         "data": {
-          "group_name": "Skupina",
-          "file_name": "Súbor"
+          "name": "Názov spínača",
+          "mode": "Režim",
+          "toggle_for": "Doba prepnutia",
+          "cancellable": "Možno zrušiť",
+          "device_id": "Priradiť k inému zariadeniu"
+        },
+        "data_description": {
+          "mode": "Určuje, či spínač momentárne zapína (ON) alebo momentárne vypína (OFF).",
+          "toggle_for": "Doba, po ktorú bude spínač prepnutý.",
+          "cancellable": "Povoliť manuálne zrušenie prepnutia spínača."
         }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "name": "Názov spínača",
+          "mode": "Režim",
+          "toggle_for": "Doba prepnutia",
+          "cancellable": "Možno zrušiť",
+          "device_id": "Priradiť k inému zariadeniu",
+          "clear_device_id": "Zrušiť priradenie zariadenia"
+        },
+        "data_description": {
+          "mode": "Určuje, či spínač momentárne zapína (ON) alebo momentárne vypína (OFF).",
+          "toggle_for": "Doba, po ktorú bude spínač prepnutý.",
+          "cancellable": "Povoliť manuálne zrušenie prepnutia spínača."
+        }
+      }
+    },
+    "abort": {
+      "yaml_switch": "Možnosti tohto momentálneho spínača vytvoreného cez YAML tu nie je možné zmeniť.\n\nAk chcete spravovať tento momentálny spínač pomocou používateľského rozhrania, je potrebné:\n1. Odstrániť ho z YAML\n2. Reštartovať Home Assistant\n3. Ručne ho znova vytvoriť v Home Assistant → Integrácie → +Pridať integráciu."
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "on": "Zapnuté",
+        "off": "Vypnuté"
       }
     }
   }
