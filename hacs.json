@@ -1,3 +1,5 @@
 {
-  "name": "Momentary Switch Component"
+  "name": "Momentary Switch Component",
+  "zip_release": true,
+  "filename": "momentary.zip"
 }
