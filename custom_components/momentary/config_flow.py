@@ -74,7 +74,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
+            data_schema=vol.Schema(  # type: ignore[arg-type]
                 {
                     vol.Required(ATTR_GROUP_NAME, default=user_input[ATTR_GROUP_NAME]): str,
                     vol.Required(ATTR_FILE_NAME, default=user_input[ATTR_FILE_NAME]): str,
