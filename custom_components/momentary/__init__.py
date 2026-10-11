@@ -30,7 +30,7 @@ from .const import (
     CONF_YAML_CONFIG,
 )
 
-__version__ = "0.7.0b13"
+__version__ = "0.7.0b14"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,6 +119,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[COMPONENT_DOMAIN] = {}
         hass.data[COMPONENT_CONFIG] = {}
 
+    if ATTR_GROUP_NAME not in entry.data or ATTR_FILE_NAME not in entry.data:
+        _LOGGER.error("Config entry %s missing required group_name or file_name", entry.title)
+        return False
+
     # Database of devices
     group_name = entry.data[ATTR_GROUP_NAME]
     file_name = entry.data[ATTR_FILE_NAME]
@@ -180,11 +184,12 @@ async def _async_get_or_create_momentary_device_in_registry(
 
 
 async def _async_delete_momentary_device_from_registry(
-    hass: HomeAssistant, _entry: ConfigEntry, device_id: str, _name: str
+    hass: HomeAssistant, entry: ConfigEntry, device_id: str, _name: str
 ) -> None:
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(
-        identifiers={(COMPONENT_DOMAIN, device_id)},
+    device = device_registry.async_get_device_by_identifier(
+        identifier=(COMPONENT_DOMAIN, device_id),
+        config_entry_id=entry.entry_id,
     )
     if device:
         _LOGGER.debug("found something to delete! %s", device.id)
