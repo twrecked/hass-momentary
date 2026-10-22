@@ -4,10 +4,11 @@ This module provides the SwitchEntity implementation and platform setup
 helpers used by Home Assistant to create momentary switch entities.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
-import pprint
 from typing import Any
 
 import voluptuous as vol
@@ -15,7 +16,7 @@ import voluptuous as vol
 from homeassistant.components.switch import DOMAIN as PLATFORM_DOMAIN, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.core import HassJob, HomeAssistant, State, callback
+from homeassistant.core import HomeAssistant, State, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import DeviceInfo
@@ -33,7 +34,6 @@ from .const import (
     ATTR_SWITCHES,
     ATTR_TIMED_STATE,
     ATTR_TOGGLE_UNTIL,
-    ATTR_UNIQUE_ID,
     COMPONENT_CONFIG,
     COMPONENT_DOMAIN,
     COMPONENT_MANUFACTURER,
@@ -79,7 +79,7 @@ async def async_setup_platform(
 
     This is only used when YAML support is enabled for the integration.
     """
-    if hass.data[COMPONENT_CONFIG].get(CONF_YAML_CONFIG, False):
+    if hass.data.get(COMPONENT_CONFIG, {}).get(CONF_YAML_CONFIG, False):
         _LOGGER.debug("setting up old config...")
 
         switches = [MomentarySwitch(None, config)]
@@ -89,19 +89,19 @@ async def async_setup_platform(
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: Callable[[list], None],
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up switch entities from a config entry."""
     _LOGGER.debug("setting up the entries...")
 
     # create entities
-    entities = []
-    for switch, values in hass.data[COMPONENT_DOMAIN][entry.data[ATTR_GROUP_NAME]][
-        ATTR_SWITCHES
-    ].items():
-        values = SWITCH_SCHEMA(values)
-        _LOGGER.debug("would try to add switch %s/%s", switch, values)
-        entities.append(MomentarySwitch(switch, values))
+    entities: list[MomentarySwitch] = []
+    group_data = hass.data.get(COMPONENT_DOMAIN, {}).get(entry.data[ATTR_GROUP_NAME], {})
+    switches_dict = group_data.get(ATTR_SWITCHES, {})
+    for switch, values in switches_dict.items():
+        validated_values = SWITCH_SCHEMA(values)
+        _LOGGER.debug("would try to add switch %s/%s", switch, validated_values)
+        entities.append(MomentarySwitch(switch, validated_values))
 
     async_add_entities(entities)
 
@@ -114,47 +114,43 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
     to persist the toggle_until timestamp across restarts.
     """
 
+    _attr_should_poll = False
+
     def __init__(self, unique_id: str | None, config: dict[str, Any]) -> None:
         """Initialize the Momentary switch device.
 
         Parameters
         ----------
-        unique_id: Optional[str]
+        unique_id: str | None
             The integration-unique id for this switch (or None for old YAML).
-        config: dict
+        config: dict[str, Any]
             The configuration dictionary for the switch.
 
         """
         _LOGGER.debug("%s", config)
 
         # Get settings.
-        self._mode = config.get(CONF_MODE, DEFAULT_MODE)
+        self._mode = str(config.get(CONF_MODE, DEFAULT_MODE))
         self._toggle_for = config.get(CONF_TOGGLE_FOR, DEFAULT_TOGGLE_FOR)
-        self._cancellable = config.get(CONF_CANCELLABLE, DEFAULT_CANCELLABLE)
+        self._cancellable = bool(config.get(CONF_CANCELLABLE, DEFAULT_CANCELLABLE))
 
         # Local defaults
-        self._toggle_until = DEFAULT_TOGGLE_UNTIL
-        self._idle_state = False
-        self._timed_state = True
-        self._timer: Callable | None = None
+        self._toggle_until: datetime = DEFAULT_TOGGLE_UNTIL
+        self._idle_state: bool = False
+        self._timed_state: bool = True
+        self._timer: Callable[[], None] | None = None
 
-        # Old configuration - only turns on
-        if self._mode.lower() == DEFAULT_MODE:
-            _LOGGER.debug("old config, idle-state=%s", self._idle_state)
-
-        # New configuration - can be either turn off or on. Base on or off are
-        # converted to True and False. We need to handle those.
-        else:
+        # Determine states based on mode
+        if self._mode.lower() not in [DEFAULT_MODE, "on", "true"]:
             if self._mode.lower() in ["off", "false"]:
                 self._idle_state = True
                 self._timed_state = False
-            _LOGGER.debug("new config, idle-state=%s", self._idle_state)
+            _LOGGER.debug("configured idle-state=%s for %s", self._idle_state, self._mode)
+        else:
+            _LOGGER.debug("default idle-state=%s for %s", self._idle_state, self._mode)
 
         if unique_id is None:
             # Old style yaml config.
-            # Build name, entity id and unique id. We do this because historically
-            # the non-domain piece of the entity_id was prefixed with virtual_ so
-            # we build the pieces manually to make sure.
             self._attr_name = config.get(CONF_NAME, "")
             if self._attr_name.startswith("!"):
                 self._attr_name = self._attr_name[1:]
@@ -183,34 +179,43 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
 
     def _restore_state(self, state: State) -> None:
         _LOGGER.info("Momentary %s: restoring state", self.unique_id)
-        _LOGGER.debug("Momentary:: %s", pprint.pformat(state.attributes))
-        self._toggle_until = datetime.fromisoformat(
-            state.attributes.get(ATTR_TOGGLE_UNTIL, DEFAULT_TOGGLE_UNTIL_STR)
-        )
-        if self._toggle_until > dt_util.utcnow():
-            _LOGGER.debug("restoring %s to timed state", self.name)
+        raw_until = state.attributes.get(ATTR_TOGGLE_UNTIL)
+        parsed_until: datetime | None = None
+
+        if raw_until is not None:
+            if isinstance(raw_until, datetime):
+                parsed_until = raw_until
+            elif isinstance(raw_until, str):
+                try:
+                    parsed_until = dt_util.parse_datetime(raw_until)
+                except (ValueError, TypeError):
+                    parsed_until = None
+
+        if parsed_until is not None:
+            if parsed_until.tzinfo is None:
+                parsed_until = parsed_until.replace(tzinfo=UTC)
+            self._toggle_until = parsed_until
+        else:
+            self._toggle_until = DEFAULT_TOGGLE_UNTIL
+
+        now = dt_util.utcnow()
+        if self._toggle_until > now:
+            _LOGGER.debug("restoring %s to timed state until %s", self.name, self._toggle_until)
             self._attr_is_on = self._timed_state
             self._timer = async_track_point_in_time(
-                self.hass, HassJob(self._async_stop_activity), self._toggle_until
+                self.hass, self._handle_timer_expired, self._toggle_until
             )
         else:
-            _LOGGER.debug("restoring %s to off state", self.name)
+            _LOGGER.debug("restoring %s to idle state", self.name)
             self._attr_is_on = self._idle_state
+            self._toggle_until = DEFAULT_TOGGLE_UNTIL
 
     def _update_attributes(self) -> None:
-        # Set up some attributes.
         self._attr_extra_state_attributes = {
             ATTR_IDLE_STATE: self._idle_state,
             ATTR_TIMED_STATE: self._timed_state,
-            ATTR_TOGGLE_UNTIL: self._toggle_until,
+            ATTR_TOGGLE_UNTIL: self._toggle_until.isoformat(),
         }
-        if _LOGGER.isEnabledFor(logging.DEBUG):
-            self._attr_extra_state_attributes.update(
-                {
-                    ATTR_ENTITY_ID: self.entity_id,
-                    ATTR_UNIQUE_ID: self.unique_id,
-                }
-            )
 
     async def async_added_to_hass(self) -> None:
         """Handle entity being added to Home Assistant.
@@ -225,32 +230,36 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
             self._restore_state(state)
         self._update_attributes()
 
-    @callback
-    async def _async_stop_activity(self, *_args: Any) -> None:
-        """Turn the switch to idle state.
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up resources when entity is being removed from Home Assistant."""
+        if self._timer is not None:
+            self._timer()
+            self._timer = None
+        await super().async_will_remove_from_hass()
 
-        Before doing that make sure:
-         - it's not idle already
-         - we're past the toggle time
-        """
+    @callback
+    def _handle_timer_expired(self, _now: datetime) -> None:
+        """Turn the switch to idle state when countdown expires."""
+        self._timer = None
         if self._attr_is_on == self._timed_state:
-            if dt_util.utcnow() >= self._toggle_until:
+            now = dt_util.utcnow()
+            if now >= self._toggle_until:
                 _LOGGER.debug("moving %s out of timed state", self.name)
                 self._attr_is_on = self._idle_state
                 self._toggle_until = DEFAULT_TOGGLE_UNTIL
-                self._timer = None
                 self._update_attributes()
-                self.async_schedule_update_ha_state()
+                self.async_write_ha_state()
             else:
                 _LOGGER.debug("too soon, restarting %s timer", self.name)
                 self._timer = async_track_point_in_time(
-                    self.hass, HassJob(self._async_stop_activity), self._toggle_until
+                    self.hass, self._handle_timer_expired, self._toggle_until
                 )
         else:
             _LOGGER.debug("%s already idle", self.name)
 
+    @callback
     def _start_activity(self, new_state: bool) -> None:
-        """Change the switch state.
+        """Change the switch state on the event loop.
 
         If moving to timed then restart the timer, new toggle_until will be used.
         If moving from timed, then clear out the _toggle_until value.
@@ -258,38 +267,42 @@ class MomentarySwitch(RestoreEntity, SwitchEntity):
         # Are we moving to the timed state? If so start a timer to flip it back.
         if self._timed_state == new_state:
             _LOGGER.debug("(re)moving %s to timed state", self.name)
+            # Cancel existing timer callback before assigning a new one
+            if self._timer is not None:
+                self._timer()
+                self._timer = None
+
             self._attr_is_on = self._timed_state
             self._toggle_until = dt_util.utcnow() + self._toggle_for
             self._timer = async_track_point_in_time(
-                self.hass, HassJob(self._async_stop_activity), self._toggle_until
+                self.hass, self._handle_timer_expired, self._toggle_until
             )
 
-        # Are we cancelling an timed state? And are we allowed. Then turn it
-        # back now, the timer can run without causing a problem.
+        # Are we cancelling a timed state? And are we allowed.
         elif self._cancellable:
             _LOGGER.debug("cancelling timed state for %s", self.name)
             if self._timer is not None:
                 self._timer()
+                self._timer = None
             self._attr_is_on = self._idle_state
             self._toggle_until = DEFAULT_TOGGLE_UNTIL
-            self._timer = None
 
-        # Make sure system gets updated.
+        # Make sure system gets updated immediately on the event loop
         self._update_attributes()
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the momentary switch on.
 
-        This triggers the momentary timed state, or simply sets the entity
-        to the on/idle state depending on configuration.
+        This triggers the momentary timed state, or sets the entity
+        to on depending on configuration.
         """
         self._start_activity(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the momentary switch off.
 
-        This cancels a timed state if cancellable, or sets the entity to the
-        configured idle state.
+        This cancels a timed state if cancellable, or sets the entity to off
+        depending on configuration.
         """
         self._start_activity(False)
