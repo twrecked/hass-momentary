@@ -26,12 +26,14 @@ ATTR_UNIQUE_ID = "unique_id"
 ATTR_VERSION = "version"
 
 CONF_CANCELLABLE = "cancellable"
+CONF_EDITOR_URL = "editor_url"
 CONF_MODE = "mode"
 CONF_NAME = "name"
 CONF_TOGGLE_FOR = "toggle_for"
 CONF_YAML_CONFIG = "yaml_config"
 
 DEFAULT_CANCELLABLE = False
+DEFAULT_EDITOR_URL = "https://momentary-dot-twrecked-tools.nn.r.appspot.com"
 DEFAULT_IMPORTED_NAME = "import"
 DEFAULT_MODE = "old"
 DEFAULT_TOGGLE_FOR = timedelta(seconds=1)

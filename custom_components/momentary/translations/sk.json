@@ -15,5 +15,16 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Konfigurácia momentálnych spínačov",
+        "description": "Kliknutím na odkaz nižšie otvorte vizuálny editor pre **{group_name}** v novej záložke:\n\n[**Otvoriť Editor momentálnych zariadení**]({builder_url})\n\nSúbor: `{file_name}`\n\nPo dokončení úprav kliknite v editore na **Uložiť a vrátiť sa**, a potom kliknite na **Odoslať** pre zatvorenie tohto dialógu.",
+        "data": {
+          "editor_url": "URL Editora"
+        }
+      }
+    }
   }
 }

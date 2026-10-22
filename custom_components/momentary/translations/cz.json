@@ -1,0 +1,30 @@
+{
+  "title": "Momentální Zařízení",
+  "config": {
+    "error": {
+      "group_name_used": "Tento název skupiny je již použit, zkuste jiný.",
+      "file_name_used": "Tento název souboru je již použit, zkuste jiný."
+    },
+    "step": {
+      "user": {
+        "title": "Momentální Databáze",
+        "description": "Zadejte název skupiny a cestu k souboru obsahujícímu momentální zařízení. Pokud neexistuje, vytvoří se nový.",
+        "data": {
+          "group_name": "Skupina",
+          "file_name": "Soubor"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Konfigurace momentálních spínačů",
+        "description": "Kliknutím na odkaz níže otevřete vizuální editor pro **{group_name}** v nové záložce:\n\n[**Otevřít Editor momentálních zařízení**]({builder_url})\n\nSoubor: `{file_name}`\n\nPo dokončení úprav klikněte v editoru na **Uložit a vrátit se**, a poté klikněte na **Odeslat** pro zavření tohoto dialogu.",
+        "data": {
+          "editor_url": "URL Editoru"
+        }
+      }
+    }
+  }
+}

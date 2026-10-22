@@ -5,17 +5,24 @@ This module handles setup of the integration and config entry lifecycle.
 
 from __future__ import annotations
 
+import contextlib
 import logging
+from pathlib import Path
+import secrets
 
+from aiohttp import web
 import voluptuous as vol
 
+from homeassistant.components import webhook
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_SOURCE, Platform
 from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util.yaml import parse_yaml
 
 from .cfg import BlendedCfg
 from .const import (
@@ -30,7 +37,7 @@ from .const import (
     CONF_YAML_CONFIG,
 )
 
-__version__ = "0.7.0b14"
+__version__ = "0.8.0-alpha.1"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,9 +54,7 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up an momentary component."""
-    # hass.data.setdefault(COMPONENT_DOMAIN, {})
-
+    """Set up the momentary component."""
     if COMPONENT_DOMAIN not in hass.data:
         hass.data[COMPONENT_DOMAIN] = {}
         hass.data[COMPONENT_CONFIG] = {}
@@ -108,6 +113,51 @@ def _async_find_matching_config_entry(hass: HomeAssistant) -> ConfigEntry | None
     return None
 
 
+async def _async_handle_builder_webhook(
+    hass: HomeAssistant, _webhook_id: str, request: web.Request, entry: ConfigEntry
+) -> web.Response:
+    """Handle incoming YAML save from Momentary Device Editor."""
+    token = request.query.get("token") or request.headers.get("X-Auth-Token")
+    expected_token = (
+        hass.data.get(COMPONENT_DOMAIN, {})
+        .get(entry.entry_id, {})
+        .get("webhook_token")
+    )
+    if not token or token != expected_token:
+        _LOGGER.warning("Invalid token received on momentary builder webhook")
+        return web.Response(text="Invalid token", status=403)
+
+    body = await request.text()
+    if not body:
+        return web.Response(text="Empty body", status=400)
+
+    try:
+        parsed = parse_yaml(body)
+        if not isinstance(parsed, dict):
+            return web.Response(text="YAML root must be a dictionary", status=400)
+    except (HomeAssistantError, ValueError, TypeError) as err:
+        _LOGGER.warning("Invalid YAML received on builder webhook: %s", err)
+        return web.Response(text=f"Invalid YAML: {err}", status=400)
+
+    file_name = entry.data.get(ATTR_FILE_NAME)
+    if not file_name:
+        return web.Response(text="No file_name configured for entry", status=500)
+
+    def _write_yaml() -> None:
+        path = Path(file_name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = path.with_name(f"{path.name}.tmp")
+        temp_file.write_text(body, encoding="utf-8")
+        temp_file.replace(path)
+
+    await hass.async_add_executor_job(_write_yaml)
+    _LOGGER.info("Successfully updated %s from Momentary Device Editor", file_name)
+
+    # Reload config entry asynchronously to pick up changes
+    hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+    return web.Response(text="OK", status=200)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a config entry for the momentary integration.
 
@@ -123,9 +173,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Config entry %s missing required group_name or file_name", entry.title)
         return False
 
-    # Database of devices
     group_name = entry.data[ATTR_GROUP_NAME]
     file_name = entry.data[ATTR_FILE_NAME]
+
+    # Register builder webhook
+    webhook_id = f"momentary_{entry.entry_id}"
+    token = secrets.token_hex(16)
+    if entry.entry_id not in hass.data[COMPONENT_DOMAIN]:
+        hass.data[COMPONENT_DOMAIN][entry.entry_id] = {}
+    hass.data[COMPONENT_DOMAIN][entry.entry_id]["webhook_token"] = token
+    hass.data[COMPONENT_DOMAIN][entry.entry_id]["webhook_id"] = webhook_id
+
+    async def _handle_webhook(
+        hass_instance: HomeAssistant, wh_id: str, req: web.Request
+    ) -> web.Response:
+        return await _async_handle_builder_webhook(hass_instance, wh_id, req, entry)
+
+    with contextlib.suppress(ValueError):
+        webhook.async_register(
+            hass,
+            COMPONENT_DOMAIN,
+            f"Momentary Builder ({group_name})",
+            webhook_id,
+            _handle_webhook,
+            allowed_methods=["POST"],
+        )
+
+    # Database of devices
     cfg = BlendedCfg(hass, group_name, file_name)
     await cfg.async_load()
 
@@ -150,23 +224,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
     )
     _LOGGER.debug("update hass data %s", hass.data[COMPONENT_DOMAIN])
+
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SWITCH])
 
     return True
 
 
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("unloading it %s", entry.data[ATTR_GROUP_NAME])
+    group_name = entry.data.get(ATTR_GROUP_NAME)
+    _LOGGER.debug("unloading momentary group %s", group_name)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, [Platform.SWITCH])
     if unload_ok:
-        await BlendedCfg.delete_group(hass, entry.data[ATTR_GROUP_NAME])
-        cfg = hass.data[COMPONENT_DOMAIN].pop(entry.data[ATTR_GROUP_NAME])
-        for device, name in cfg[ATTR_DEVICES].items():
-            await _async_delete_momentary_device_from_registry(hass, entry, device, name)
-    _LOGGER.debug("after hass=%s", hass.data[COMPONENT_DOMAIN])
+        if group_name:
+            hass.data.get(COMPONENT_DOMAIN, {}).pop(group_name, None)
+
+        webhook_id = f"momentary_{entry.entry_id}"
+        with contextlib.suppress(ValueError, KeyError):
+            webhook.async_unregister(hass, webhook_id)
+        hass.data.get(COMPONENT_DOMAIN, {}).pop(entry.entry_id, None)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle removal of an entry."""
+    group_name = entry.data.get(ATTR_GROUP_NAME)
+    if group_name:
+        _LOGGER.debug("removing momentary group meta for %s", group_name)
+        await BlendedCfg.delete_group(hass, group_name)
 
 
 async def _async_get_or_create_momentary_device_in_registry(
@@ -184,12 +276,11 @@ async def _async_get_or_create_momentary_device_in_registry(
 
 
 async def _async_delete_momentary_device_from_registry(
-    hass: HomeAssistant, entry: ConfigEntry, device_id: str, _name: str
+    hass: HomeAssistant, _entry: ConfigEntry, device_id: str, _name: str
 ) -> None:
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device_by_identifier(
-        identifier=(COMPONENT_DOMAIN, device_id),
-        config_entry_id=entry.entry_id,
+    device = device_registry.async_get_device(
+        identifiers={(COMPONENT_DOMAIN, device_id)},
     )
     if device:
         _LOGGER.debug("found something to delete! %s", device.id)
