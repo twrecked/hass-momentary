@@ -109,3 +109,7 @@ venv.bak/
 *.rej
 *.orig
 *.diff
+.idea
+prompt.md
+AGENTS.md
+venv-*/
