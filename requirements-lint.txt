@@ -2,7 +2,6 @@ homeassistant-stubs
 mypy
 pre-commit
 ruff
-types-aiofiles
 types-cffi
 types-PyMySQL
 types-pyRFC3339

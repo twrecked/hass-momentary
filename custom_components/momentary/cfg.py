@@ -4,15 +4,16 @@ This module manages loading and saving user and meta configuration for the
 momentary integration.
 """
 
+from __future__ import annotations
+
 import asyncio
 import copy
 from datetime import timedelta
 import json
 import logging
+from pathlib import Path
 from typing import Any
 import uuid
-
-import aiofiles
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME, CONF_NAME, CONF_PLATFORM, Platform
 from homeassistant.core import HomeAssistant
@@ -47,48 +48,54 @@ def _fix_value(value: Any) -> Any:
     return value
 
 
-async def _async_load_json(file_name: str) -> dict[str, Any]:
-    _LOGGER.debug("_async_load_yaml1 file_name for %s", file_name)
+def _read_file(file_name: str) -> str:
+    """Read file content synchronously in executor."""
+    return Path(file_name).read_text(encoding="utf-8")
+
+
+def _write_file(file_name: str, content: str) -> None:
+    """Write file content atomically in executor."""
+    path = Path(file_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = path.with_name(f"{path.name}.tmp")
+    temp_file.write_text(content, encoding="utf-8")
+    temp_file.replace(path)
+
+
+async def _async_load_json(hass: HomeAssistant, file_name: str) -> dict[str, Any]:
+    _LOGGER.debug("loading JSON %s", file_name)
     try:
-        async with aiofiles.open(file_name) as meta_file:
-            _LOGGER.debug("_async_load_yaml2 file_name for %s", file_name)
-            contents = await meta_file.read()
-            _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
-            return json.loads(contents)
+        content = await hass.async_add_executor_job(_read_file, file_name)
+        return json.loads(content)
     except (FileNotFoundError, PermissionError, json.JSONDecodeError) as err:
         _LOGGER.debug("_async_load_json failed for %s: %s", file_name, err)
         return {}
 
 
-async def _async_save_json(file_name: str, data: dict[str, Any]) -> None:
-    _LOGGER.debug("_async_save_yaml1 file_name for %s", file_name)
+async def _async_save_json(hass: HomeAssistant, file_name: str, data: dict[str, Any]) -> None:
+    _LOGGER.debug("saving JSON %s", file_name)
     try:
-        async with aiofiles.open(file_name, "w") as meta_file:
-            data_str: str = json.dumps(data, indent=4)
-            await meta_file.write(data_str)
+        content = json.dumps(data, indent=4)
+        await hass.async_add_executor_job(_write_file, file_name, content)
     except (OSError, PermissionError) as err:
         _LOGGER.debug("_async_save_json failed for %s: %s", file_name, err)
 
 
-async def _async_load_yaml(file_name: str) -> list | str | dict[str, Any]:
-    _LOGGER.debug("_async_load_yaml1 file_name for %s", file_name)
+async def _async_load_yaml(hass: HomeAssistant, file_name: str) -> Any:
+    _LOGGER.debug("loading YAML %s", file_name)
     try:
-        async with aiofiles.open(file_name) as meta_file:
-            _LOGGER.debug("_async_load_yaml2 file_name for %s", file_name)
-            contents = await meta_file.read()
-            _LOGGER.debug("_async_load_yaml3 file_name for %s", file_name)
-            return parse_yaml(contents)
+        content = await hass.async_add_executor_job(_read_file, file_name)
+        return parse_yaml(content)
     except (FileNotFoundError, PermissionError, ValueError) as err:
         _LOGGER.debug("_async_load_yaml failed for %s: %s", file_name, err)
         return {}
 
 
-async def _async_save_yaml(file_name: str, data: dict[str, Any]) -> None:
-    _LOGGER.debug("_async_save_yaml1 file_name for %s", file_name)
+async def _async_save_yaml(hass: HomeAssistant, file_name: str, data: dict[str, Any]) -> None:
+    _LOGGER.debug("saving YAML %s", file_name)
     try:
-        async with aiofiles.open(file_name, "w") as meta_file:
-            data_str = dump(data)
-            await meta_file.write(data_str)
+        content = dump(data)
+        await hass.async_add_executor_job(_write_file, file_name, content)
     except (OSError, PermissionError) as err:
         _LOGGER.debug("_async_save_yaml failed for %s: %s", file_name, err)
 
@@ -101,7 +108,7 @@ async def _load_meta_data(
     Returns a tuple of (devices_meta, switches_meta) for the group.
     """
     async with _meta_lock:
-        meta_data = await _async_load_json(default_meta_file(hass))
+        meta_data = await _async_load_json(hass, default_meta_file(hass))
         return (
             meta_data.get(ATTR_DEVICES, {}).get(group_name, {}),
             meta_data.get(ATTR_SWITCHES, {}).get(group_name, {}),
@@ -121,7 +128,7 @@ async def _save_meta_data(
     """
     async with _meta_lock:
         # Read in current meta data
-        meta_data = await _async_load_json(default_meta_file(hass))
+        meta_data = await _async_load_json(hass, default_meta_file(hass))
         devices = meta_data.get(ATTR_DEVICES, {})
         switches = meta_data.get(ATTR_SWITCHES, {})
 
@@ -134,6 +141,7 @@ async def _save_meta_data(
         _LOGGER.debug("switch meta after %s", switches)
 
         await _async_save_json(
+            hass,
             default_meta_file(hass),
             {ATTR_VERSION: 1, ATTR_DEVICES: devices, ATTR_SWITCHES: switches},
         )
@@ -143,33 +151,41 @@ async def _delete_meta_data(hass: HomeAssistant, group_name: str) -> None:
     """Delete meta data for a particular group name from storage."""
     async with _meta_lock:
         # Read in current meta data
-        meta_data = await _async_load_json(default_meta_file(hass))
+        meta_data = await _async_load_json(hass, default_meta_file(hass))
         devices = meta_data.get(ATTR_DEVICES, {})
         switches = meta_data.get(ATTR_SWITCHES, {})
 
         # Remove the group.
         _LOGGER.debug("devices meta before %s", devices)
         _LOGGER.debug("switches meta before %s", switches)
-        devices.pop(group_name)
-        switches.pop(group_name)
+        devices.pop(group_name, None)
+        switches.pop(group_name, None)
         _LOGGER.debug("devices meta after %s", devices)
         _LOGGER.debug("switches meta after %s", switches)
 
         await _async_save_json(
+            hass,
             default_meta_file(hass),
             {ATTR_VERSION: 1, ATTR_DEVICES: devices, ATTR_SWITCHES: switches},
         )
 
 
-async def _load_user_data(switches_file: str) -> dict[str, Any]:
-    entities = await _async_load_yaml(switches_file)
+async def _load_user_data(hass: HomeAssistant, switches_file: str) -> list[dict[str, Any]]:
+    entities = await _async_load_yaml(hass, switches_file)
     if not isinstance(entities, dict):
-        return {}
-    return entities.get(ATTR_SWITCHES, {})
+        return []
+    switches = entities.get(ATTR_SWITCHES, [])
+    if not isinstance(switches, list):
+        return []
+    return switches
 
 
-async def _save_user_data(switches_file: str, switches: dict[str, Any]) -> None:
-    await _async_save_yaml(switches_file, {ATTR_VERSION: 1, ATTR_SWITCHES: list(switches.values())})
+async def _save_user_data(
+    hass: HomeAssistant, switches_file: str, switches: dict[str, Any]
+) -> None:
+    await _async_save_yaml(
+        hass, switches_file, {ATTR_VERSION: 1, ATTR_SWITCHES: list(switches.values())}
+    )
 
 
 def _make_original_unique_id(name: str) -> str:
@@ -182,12 +198,6 @@ def _make_original_entity_id(platform: Platform, name: str) -> str:
     if name.startswith("!"):
         return f"{platform}.{slugify(name[1:])}"
     return f"{platform}.{COMPONENT_DOMAIN}_{slugify(name)}"
-
-
-def _make_original_name(name: str) -> str:
-    if name.startswith("!"):
-        return name[1:]
-    return f"{COMPONENT_DOMAIN} {name}"
 
 
 def _map_config_name(name: str) -> str:
@@ -260,12 +270,11 @@ class BlendedCfg:
         self._smeta_data: dict[str, Any] = {}
         self._smeta_data_in: dict[str, Any] = {}
 
-    def _parse_switches(self, device_name: str, switches: list) -> None:
+    def _parse_switches(self, device_name: str, switches: list[Any]) -> None:
         # Look up the device ID. If we don't have one we create it now.
         device_id = self._dmeta_data_in.get(device_name, {}).get(ATTR_DEVICE_ID, None)
         if device_id is None:
             _LOGGER.debug("adding '%s' to the list of devices", device_name)
-            # device_id = slugify(f"{COMPONENT_DOMAIN}.{self._group_name}.{device_name}")
             device_id = _make_unique_id()
             self._dmeta_data_in.update({device_name: {ATTR_DEVICE_ID: device_id}})
             self._changed = True
@@ -277,6 +286,9 @@ class BlendedCfg:
 
         # Now attach each switch to a device.
         for switch in switches:
+            if not isinstance(switch, dict) or ATTR_NAME not in switch:
+                continue
+
             name = switch[ATTR_NAME]
 
             # If there isn't a unique_id we create one. This usually means
@@ -295,8 +307,7 @@ class BlendedCfg:
                 )
                 self._changed = True
 
-            # Now copy over the entity id of the device. Not having this is a
-            # bug.
+            # Now copy over the entity id of the device.
             entity_id = self._smeta_data_in.get(name, {}).get(ATTR_ENTITY_ID, None)
             if entity_id is None:
                 _LOGGER.info("problem creating %s, no entity id", name)
@@ -309,7 +320,8 @@ class BlendedCfg:
                 {ATTR_DEVICE_ID: device_id, ATTR_ENTITY_ID: entity_id, ATTR_NAME: _make_name(name)}
             )
             self._switches.update({unique_id: switch})
-            self._smeta_data.update({name: self._smeta_data_in.pop(name)})
+            if name in self._smeta_data_in:
+                self._smeta_data.update({name: self._smeta_data_in.pop(name)})
 
     async def async_load(self) -> None:
         """Load switches from the database.
@@ -318,9 +330,6 @@ class BlendedCfg:
         add to the list - they don't need to worry about dictionary key
         clashes - so we have to convert it here. As part of the conversion
         we will fix up new entries.
-
-        This doesn't have to worry about upgrades, that is handled in the
-        config_flow piece.
         """
         try:
             self._devices = {}
@@ -329,32 +338,26 @@ class BlendedCfg:
             self._switches = {}
             self._smeta_data = {}
 
-            # Read in the known meta data. We put this into a temporary
-            # variable for now. Anything we find in the user list is moved into
-            # the permanent variable. Anything left is orphaned.
+            # Read in the known meta data.
             self._dmeta_data_in, self._smeta_data_in = await _load_meta_data(
                 self._hass, self._group_name
             )
 
-            # Parse out the user data. We have 2 formats:
-            # - `name:` this indicates a device/entity with a one to one mapping
-            # - `a device name:`, any key other than `name`, this indicates a
-            #   device with multiple entities, we use the key to find the device
-            for device_or_switch in await _load_user_data(self._switches_file):
-                if CONF_NAME in device_or_switch:
-                    # TODO: Need to fix typing here.
-                    device_name = device_or_switch[CONF_NAME]  # type: ignore[index]
-                    self._parse_switches(device_name, [device_or_switch])
-
-                elif isinstance(device_or_switch, dict):
-                    device_name = list(device_or_switch.keys())[0]
-                    self._parse_switches(device_name, device_or_switch[device_name])
-
+            # Parse out the user data.
+            for device_or_switch in await _load_user_data(self._hass, self._switches_file):
+                if isinstance(device_or_switch, dict):
+                    if CONF_NAME in device_or_switch:
+                        device_name = str(device_or_switch[CONF_NAME])
+                        self._parse_switches(device_name, [device_or_switch])
+                    else:
+                        device_name = list(device_or_switch.keys())[0]
+                        children = device_or_switch[device_name]
+                        if isinstance(children, list):
+                            self._parse_switches(device_name, children)
                 else:
-                    _LOGGER.info("malformed device or group")
+                    _LOGGER.info("malformed device or group: %s", device_or_switch)
 
-            # Create orphaned list. If we have anything here we need to update
-            # the saved meta data.
+            # Create orphaned list.
             for device_name, values in self._dmeta_data_in.items():
                 if device_name in self._dmeta_data:
                     _LOGGER.debug("still using %s", device_name)
@@ -451,21 +454,17 @@ class UpgradeCfg:
         The function normalizes the entry and populates the in-memory
         structures used when saving the upgraded configuration.
         """
-
         _LOGGER.debug("import=%s", switch)
 
-        # We remove the platform field. We deepcopy before doing this to
-        # quiet down some startup errors.
+        # We remove the platform field.
         switch = copy.deepcopy(switch)
         switch.pop(CONF_PLATFORM, None)
 
         # Create a unique and entity ids that matches the original version.
-        # Do this before fixing the name.
         unique_id = _make_original_unique_id(switch[ATTR_NAME])
         entity_id = _make_original_entity_id(Platform.SWITCH, switch[ATTR_NAME])
 
-        # Fix the name by removing a ! or adding a + as needed. Create new
-        # device id.
+        # Fix the name by removing a ! or adding a + as needed. Create new device id.
         switch[ATTR_NAME] = _map_config_name(switch[ATTR_NAME])
         device_id = _make_device_id(switch[ATTR_NAME])
 
@@ -486,9 +485,8 @@ class UpgradeCfg:
 
     async def async_save(self) -> None:
         """Save upgraded meta and user configurations to disk."""
-        # Update both database files.
         await _save_meta_data(self._hass, self._group_name, self._dmeta_data, self._smeta_data)
-        await _save_user_data(self._switches_file, self._switches)
+        await _save_user_data(self._hass, self._switches_file, self._switches)
         self.dump()
 
     def dump(self) -> None:
