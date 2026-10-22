@@ -1,3 +1,4 @@
 {
-  "name": "Momentary Switch Component"
+  "name": "Momentary Switch Component",
+  "render_readme": true
 }

@@ -12,6 +12,8 @@ _Momentary_ is a custom integration for [Home Assistant](https://www.home-assist
 >
 > **This is an active alpha release — community testing and feedback are welcome!**
 >
+> Full release details and highlights can be found in the [v0.8.0-alpha.1 Release Notes](docs/RELEASE_NOTES_v0.8.0-alpha.1.md).
+>
 > If you encounter issues, regressions, or unexpected behavior, please [open a GitHub issue](https://github.com/twrecked/hass-momentary/issues).
 
 ---
