@@ -1,3 +1,14 @@
+0.8.0-alpha.1:
+  add visual momentary device editor with templates and live YAML preview
+  add options flow with authenticated webhook synchronization
+  fix timer callback to be synchronous on event loop
+  fix orphaned timer leak by cancelling existing timer on re-trigger
+  cancel active timers in async_will_remove_from_hass
+  protect state restoration against None attributes and timezone mismatch
+  replace blocking file I/O with executor-based atomic writes
+  remove undeclared aiofiles dependency
+  update iot_class to local_push and integration_type to helper
+  bump typing and modern Python 3.12+ conventions
 0.7.0b14:
   fix startup traceback on missing config entry keys
   use non-deprecated device lookup when deleting device

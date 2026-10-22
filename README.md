@@ -1,237 +1,167 @@
-# **Momentary devices for Home Assistant**
+# **Momentary Switches for Home Assistant**
 
-_Momentary_ is a component that provides momentary switches for _Home
-Assistant_. That is, it provides a simple switch that once turned on will
-turn itself off.
+_Momentary_ is a custom integration for [Home Assistant](https://www.home-assistant.io/) that provides momentary switches — switches that toggle to an active state and automatically revert back to their idle state after a configurable duration.
 
 ![icon](images/momentary-icon.png)
 
-# !!!BREAKING CHANGES!!!
-Version 0.7 supports adding momentary devices using _config flow_. By default it
-will move your existing devices into a single file `momentary.yaml`. If you
-**DO NOT** want this behaviour add this to your `momentary` configuration.
+---
 
-```yaml
-momentary:
-  yaml_config: True
-```
+> ### ⚠️ Momentary `v0.8.0-alpha` Notice
+>
+> **Momentary v0.8 modernizes the integration with native Home Assistant entity models, an interactive web-based Visual Device Editor, options flow webhook synchronization, and non-blocking asynchronous state storage.**
+>
+> **This is an active alpha release — community testing and feedback are welcome!**
+>
+> If you encounter issues, regressions, or unexpected behavior, please [open a GitHub issue](https://github.com/twrecked/hass-momentary/issues).
 
-<!--toc:start-->
-- [**Momentary devices for Home Assistant**](#momentary-devices-for-home-assistant)
-- [!!!BREAKING CHANGES!!!](#breaking-changes)
+---
+
+# Table Of Contents
+
 - [Introduction](#introduction)
-  - [Notes](#notes)
-  - [Version 0.6 Documentation](#version-06-documentation)
-  - [Thanks](#thanks)
+- [What's New in v0.8](#whats-new-in-v08)
 - [Installation](#installation)
-  - [HACS](#hacs)
-  - [Manually](#manually)
-  - [From Script](#from-script)
-- [Component Configuration](#component-configuration)
+  - [HACS (Recommended)](#hacs-recommended)
+  - [Manual Installation](#manual-installation)
+- [Visual Device Editor](#visual-device-editor)
+  - [One-Click Sync via Home Assistant](#1-one-click-sync-via-home-assistant-recommended)
+  - [Manual Copy-Paste / Offline Fallback](#2-manual-copy-paste--offline-fallback)
+  - [Running the Editor Locally on Your LAN](#3-running-the-editor-locally-on-your-lan)
 - [Entity Configuration](#entity-configuration)
-  - [Options](#options)
-- [Upgrade Notes](#upgrade-notes)
-  - [After the Upgrade](#after-the-upgrade)
-  - [Names](#names)
-  - [`unique_id`](#uniqueid)
-  - [Known Issues](#known-issues)
+  - [Standalone Switches](#standalone-switches)
+  - [Multi-Switch Devices](#multi-switch-devices)
+  - [Configuration Options](#configuration-options)
+  - [Name Prefixes](#name-prefixes)
 - [Turning on Debug](#turning-on-debug)
-<!--toc:end-->
+
+---
 
 # Introduction
 
-## Notes
+Momentary switches are ideal for simulating pushbuttons, garage door openers, gate triggers, timed staircase/hallway lighting, or reset relays that should only pulse for a designated duration before returning to their idle state.
 
-Wherever you see `/config` in this README it refers to your home-assistant
-configuration directory. For me, for example, it's `/home/steve/ha` that is
-mapped to `/config` inside my docker container.
+All state transitions are driven locally in memory (`local_push`) and persist cleanly across Home Assistant restarts.
 
-## Version 0.6 Documentation
-**This documentation is for the 0.7x version, you can find the
-0.6.x version** [here](https://github.com/twrecked/hass-momentary/blob/version-0.6.x/README.md).
+---
 
+# What's New in v0.8
 
-## Thanks
+- **Visual Device Editor**: A web-based visual card builder hosted on Google App Engine ([https://momentary-dot-twrecked-tools.nn.r.appspot.com](https://momentary-dot-twrecked-tools.nn.r.appspot.com)) or run locally.
+- **Webhook Sync**: Open the editor directly from the Home Assistant UI via **Configure** to edit switches visually and save them straight back into your configuration file.
+- **Async & Lifecycle Hardening**: Fully asynchronous executor-backed atomic file writes, elimination of unapproved third-party dependencies (`aiofiles`), and strict timer lifecycle teardown.
+- **Resilient State Persistence**: Timezone-safe state restoration that prevents crashes on missing attributes or Home Assistant restarts mid-countdown.
 
-Many thanks to:
-* Icon adapted from [svg icons](https://www.onlinewebfonts.com/icon)
-  and is licensed by CC BY 4.0
-
+---
 
 # Installation
 
-## HACS
+## HACS (Recommended)
+
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-Momentary is part of the default HACS store. If you're not interested in
-development branches this is the easiest way to install.
+Momentary is part of the default HACS store. Search for "Momentary" under Integrations and install it.
 
-## Manually
-Copy the `momentary` directory into your `/config/custom_components` directory.
+## Manual Installation
 
-## From Script
-Run the install script. Run it once to make sure the operations look sane and
-run it a second time with the `go` parameter to do the actual work. If you
-update just rerun the script, it will overwrite all installed files.
+Copy the `custom_components/momentary` folder into your Home Assistant `/config/custom_components` directory and restart Home Assistant.
 
-```sh
-install /config
-# check output looks good
-install go /config
+---
+
+# Visual Device Editor
+
+You can manage your momentary switches visually using the hosted editor:
+👉 **[https://momentary-dot-twrecked-tools.nn.r.appspot.com](https://momentary-dot-twrecked-tools.nn.r.appspot.com)**
+
+### 1. One-Click Sync via Home Assistant (Recommended)
+
+1. In Home Assistant, go to **Settings -> Devices & Services -> Momentary**.
+2. Click **Configure** on your group.
+3. Click the link **Open Momentary Device Editor** to open the builder in a new tab.
+4. Add, edit, or customize your switches with live YAML previews and templates.
+5. Click **Save & Return** in the top bar. The editor securely delivers the updated YAML back to Home Assistant via an authenticated webhook and automatically reloads the integration.
+6. Click **Submit** in Home Assistant to close the dialog.
+
+### 2. Manual Copy-Paste / Offline Fallback
+
+If you don't use webhooks or external access:
+1. Open [https://momentary-dot-twrecked-tools.nn.r.appspot.com](https://momentary-dot-twrecked-tools.nn.r.appspot.com).
+2. Click **Import YAML** and paste your `/config/momentary.yaml` content.
+3. Edit your switches visually.
+4. Click **Copy** (or **Download**) in the top right bar and paste the content into `/config/momentary.yaml`.
+5. In Home Assistant, click the three dots on the Momentary integration card and select **Reload**.
+
+### 3. Running the Editor Locally on Your LAN
+
+You can also run the editor locally inside your private network:
+
+```bash
+cd momentary-device-editor
+pip install -r requirements.txt
+python main.py
 ```
 
-# Component Configuration
+The editor will listen on `http://localhost:8080`. In Home Assistant's **Configure** dialog, set **Editor URL** to your local address (`http://192.168.1.X:8080`).
 
-- `yaml_config`; set to `True` to enable backwards compatibility, set to `False`
-  to disable it. The default is `False`.
-
-For example, this enable backwards compatibility.
-
-```yaml
-virtual:
-  yaml_config: True
-```
+---
 
 # Entity Configuration
-Add the component using the standard _Home Assistant_  _Integration_ method.
 
-Because this component creates fake entries and because I'm still figuring out
-the _Config Flow_ interface you still have to configure it by file.
+Momentary stores its devices in `/config/momentary.yaml`.
 
-The default file is named `/config/momentary.yaml` and is a similar format to
-the standard _Home Assistant_ configuration files. This file will be created
-during an upgrade or when you add in a _Momentary_ integration. An empty 
-file looks like this:
-
+### Standalone Switches
 
 ```yaml
 version: 1
 switches:
-```
-
-To create a single momentary device add the following:
-
-```yaml
-version: 1
-switches:
-- name: Empty House Trigger
-```
-
-To create a single momentary device with custom options use:
-
-```yaml
-version: 1
-switches:
-- name: Empty House Trigger
-  mode: "on"
-  toggle_for: 5
-  cancellable: True
-```
-
-To create multiple momentary device add more devices at the bottom:
-
-```yaml
-version: 1
-switches:
-- name: Empty House Trigger
-  mode: "on"
-  toggle_for: 5
-  cancellable: True
-- name: Full House Trigger
-- name: Overflowing House Trigger
-  toggle_for: 2
-```
-
-You can group switches together under an umbrella device. To do this use a
-device name instead of `name:` as the first line of the switch entry. This
-config create a device with 3 entities:
-
-```yaml
-version: 1
-switches:
-- House Alarm:
-  - name: House to Armed Trigger
+  - name: Front Doorbell
+    mode: "on"
     toggle_for: 1
-  - name: House to Disarmed Trigger
-    toggle_for: 1
-  - name: House to Home Trigger
-    toggle_for: 1
+    cancellable: false
+  - name: Staircase Light
+    mode: "on"
+    toggle_for: 60
+    cancellable: true
 ```
 
-Once you've updated the file you will need to reload the component from its
-integration setting.
+### Multi-Switch Devices
 
-The integration uses the name to distinguish different switches. If you update
-the name of a switch the old name will be deleted and the new name created on
-reload. 
+You can group switches together under an umbrella parent device:
 
-The integration supports multiple installs, you can use this group similar
-momentary devices together.
-
-## Options
-
-The following additional parameters can be specified against the switches:
-
-| Field                   | Type       | Default            | Description                                                                        |
-| ----------------------- | ---------- | ------------------ | -------------------------------------------------------------------------------    |
-| name                    | strings    |                    | Name of the switch. Has to be supplied.                                            |
-| mode                    | string     | "on"               | Is the switch a momentary ON or OFF switch. Use `"on"` for on and `"off"` for off. |
-| toggle_for              | seconds    | 1                  | Amount of time to turn toggle switch for.                                          |
-| cancellable             | Boolean    | False              | Allow switched to be untoggled manually.                                           |
-
-
-# Upgrade Notes
-
-## After the Upgrade
-
-Check the devices and entities on the _Integrations_ page, if everything looks
-good then you can comment out the old configuration. _Don't delete it yet, this
-is alpha and I might change some settings..._
-
-## Names
-
-The qualifier applied to the name has changed. The old qualify of `!` has been
-removed, not adding _momentary_ to the device/entity name is the default. A 
-new qualify of `+` has been created, adding this tells the integration to add 
-_momentary_ to the device/entity name.
-
-The upgrade code will change this for you.
-
-| Old Name             | New Name                      | Entity Name                          |
-|----------------------| ----------------------------- | ------------------------------------ |
-| Empty House Trigger  | +Empty House Trigger          | switch.momentary_empty_house_trigger |
-| !Empty House Trigger | Empty House Trigger           | switch.empty_house_trigger           |
-
-## `unique_id`
-
-During an upgrade the original name based unique id will be created. For a new
-install a _UUID_ based unique id will be created.
-
-If you want to move to the new _UUID_ based unique IDs you can manage this
-with the following:
-
-- Delete the imported _Momentary_ integration.
-- Re-add the imported _Momentary_ integration. You can use the default values
-  for group and file name.
-
-The system will re-create your devices with the correct entity ids but with
-new _UUID_ based unique ids.
-
-_I will look at how this can be made cleaner... maybe a config flow button 
-or as part of the upgrade._
-
-## Known Issues
-
-You will see errors like this on upgrade. They don't seem to cause an issue 
-and they disappear once you remove the legacy configuration.
-
+```yaml
+version: 1
+switches:
+  - Alarm Keypad:
+      - name: Arm Away Pulse
+        mode: "on"
+        toggle_for: 2
+      - name: Arm Stay Pulse
+        mode: "on"
+        toggle_for: 2
+      - name: Panic Reset
+        mode: "off"
+        toggle_for: 5
+        cancellable: false
 ```
-2023-10-13 17:28:09.154 ERROR (MainThread) [homeassistant.components.switch] The momentary platform for the switch integration does not support platform setup. Please remove it from your config.
-```
+
+### Configuration Options
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | string | *required* | Friendly name for the switch entity. |
+| `mode` | string | `"on"` | Operating mode: `"on"` for normally-off (pulse on), or `"off"` for normally-on (pulse off). |
+| `toggle_for` | int / str | `1` | Duration to hold the active state in seconds before toggling back to idle. |
+| `cancellable` | boolean | `false` | If `true`, manually toggling the switch during the countdown cancels the timer immediately and resets to idle. |
+
+### Name Prefixes
+
+* **No prefix** (default): The entity ID is derived directly from the name (e.g. `switch.doorbell`).
+* **`+` prefix**: Tells the integration to prefix the entity ID with `momentary_` (e.g. `+Doorbell` creates `switch.momentary_doorbell`).
+
+---
 
 # Turning on Debug
 
-If you do run into issues you can enable debug with the following configuration.
+If you run into issues, enable debug logging in your `configuration.yaml`:
 
 ```yaml
 logger:
@@ -239,6 +169,3 @@ logger:
   logs:
     custom_components.momentary: debug
 ```
-
-If you can create a bug report with this debug output it would help me track 
-down the problem.
