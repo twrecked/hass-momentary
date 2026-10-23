@@ -12,7 +12,7 @@ _Momentary_ is a custom integration for [Home Assistant](https://www.home-assist
 >
 > **This is an active alpha release — community testing and feedback are welcome!**
 >
-> Full release details and highlights can be found in the [v0.8.0-alpha.1 Release Notes](docs/RELEASE_NOTES_v0.8.0-alpha.1.md).
+> Full release details and highlights can be found in the [v0.8.0-alpha.2 Release Notes](docs/RELEASE_NOTES_v0.8.0-alpha.2.md).
 >
 > If you encounter issues, regressions, or unexpected behavior, please [open a GitHub issue](https://github.com/twrecked/hass-momentary/issues).
 
@@ -34,6 +34,7 @@ _Momentary_ is a custom integration for [Home Assistant](https://www.home-assist
   - [Multi-Switch Devices](#multi-switch-devices)
   - [Configuration Options](#configuration-options)
   - [Name Prefixes](#name-prefixes)
+- [Services](#services)
 - [Turning on Debug](#turning-on-debug)
 
 ---
@@ -158,6 +159,43 @@ switches:
 
 * **No prefix** (default): The entity ID is derived directly from the name (e.g. `switch.doorbell`).
 * **`+` prefix**: Tells the integration to prefix the entity ID with `momentary_` (e.g. `+Doorbell` creates `switch.momentary_doorbell`).
+
+---
+
+# Services
+
+Momentary switch entities integrate directly with Home Assistant's standard `switch` platform services:
+
+### `switch.turn_on`
+Activates the switch into its timed state:
+* In `mode: "on"` (default), this turns the switch **ON** for `toggle_for` duration, after which it automatically turns **OFF**.
+* In `mode: "off"`, this resets the switch to its idle state (**ON**).
+
+```yaml
+service: switch.turn_on
+target:
+  entity_id: switch.front_doorbell
+```
+
+### `switch.turn_off`
+Returns the switch to its idle state:
+* If `cancellable: true` is configured and the switch is currently counting down in its active state, calling `switch.turn_off` cancels the countdown immediately and returns the switch to idle.
+* If `cancellable: false` (default), calling `switch.turn_off` while the switch is active is safely ignored until the timer naturally elapses.
+
+```yaml
+service: switch.turn_off
+target:
+  entity_id: switch.staircase_timer
+```
+
+### `switch.toggle`
+Toggles between the idle state and the active momentary timed state.
+
+```yaml
+service: switch.toggle
+target:
+  entity_id: switch.front_doorbell
+```
 
 ---
 

@@ -1,4 +1,4 @@
-# 🚀 Momentary v0.8.0-alpha.1 — Visual Device Editor & Core Architecture Modernization
+# 🚀 Momentary v0.8.0-alpha.2 — Visual Device Editor & Core Architecture Modernization
 
 > ### ⚠️ Alpha Release & Community Testing Notice
 > **Momentary v0.8 is a major modernization featuring a dedicated web-based Visual Device Editor, options flow webhook synchronization, native Home Assistant lifecycle hardening, and non-blocking asynchronous state storage.**
