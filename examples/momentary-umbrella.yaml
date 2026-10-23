@@ -1,0 +1,38 @@
+version: 1
+switches:
+  - Momentary Umbrella:
+      # 1. Standard momentary pushbutton (pulse on for 1 second)
+      - name: Front Doorbell Pulse
+        mode: "on"
+        toggle_for: 1
+        cancellable: false
+
+      # 2. Garage door / gate opener trigger (pulse on for 2 seconds)
+      - name: Garage Opener Pulse
+        mode: "on"
+        toggle_for: 2
+        cancellable: false
+
+      # 3. Timed lighting switch with early cancellation support (60s timer)
+      - name: Staircase Light Timer
+        mode: "on"
+        toggle_for: 60
+        cancellable: true
+
+      # 4. Normally-Closed relay / power breaker reset (breaks contact/turns off for 5s)
+      - name: Breaker Reset Relay
+        mode: "off"
+        toggle_for: 5
+        cancellable: false
+
+      # 5. Long cancellable timer (30s)
+      - name: Irrigation Zone Pulse
+        mode: "on"
+        toggle_for: 30
+        cancellable: true
+
+      # 6. Prefixed switch (tests '+' prefix generating switch.momentary_...)
+      - name: +Keypad Panic Pulse
+        mode: "on"
+        toggle_for: 3
+        cancellable: true
