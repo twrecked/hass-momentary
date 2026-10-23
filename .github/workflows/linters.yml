@@ -54,5 +54,5 @@ jobs:
       - name: Run mypy
         run: mypy "./custom_components/momentary/" --install-types --non-interactive --config-file pyproject.toml
 
-      - uses: pre-commit-ci/lite-action@v1.1.0
+      - uses: pre-commit-ci/lite-action@v1.2.0
         if: always()
