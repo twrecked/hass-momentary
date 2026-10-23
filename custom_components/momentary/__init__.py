@@ -119,7 +119,7 @@ async def _async_handle_builder_webhook(
     """Handle incoming YAML save from Momentary Device Editor."""
     token = request.query.get("token") or request.headers.get("X-Auth-Token")
     expected_token = (
-        hass.data.get(COMPONENT_DOMAIN, {})
+        hass.data.get(f"{COMPONENT_DOMAIN}_webhooks", {})
         .get(entry.entry_id, {})
         .get("webhook_token")
     )
@@ -179,10 +179,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register builder webhook
     webhook_id = f"momentary_{entry.entry_id}"
     token = secrets.token_hex(16)
-    if entry.entry_id not in hass.data[COMPONENT_DOMAIN]:
-        hass.data[COMPONENT_DOMAIN][entry.entry_id] = {}
-    hass.data[COMPONENT_DOMAIN][entry.entry_id]["webhook_token"] = token
-    hass.data[COMPONENT_DOMAIN][entry.entry_id]["webhook_id"] = webhook_id
+    webhooks_data = hass.data.setdefault(f"{COMPONENT_DOMAIN}_webhooks", {})
+    webhooks_data[entry.entry_id] = {
+        "webhook_token": token,
+        "webhook_id": webhook_id,
+    }
 
     async def _handle_webhook(
         hass_instance: HomeAssistant, wh_id: str, req: web.Request
@@ -248,7 +249,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         webhook_id = f"momentary_{entry.entry_id}"
         with contextlib.suppress(ValueError, KeyError):
             webhook.async_unregister(hass, webhook_id)
-        hass.data.get(COMPONENT_DOMAIN, {}).pop(entry.entry_id, None)
+        hass.data.get(f"{COMPONENT_DOMAIN}_webhooks", {}).pop(entry.entry_id, None)
 
     return unload_ok
 
