@@ -6,13 +6,13 @@ _Momentary_ is a custom integration for [Home Assistant](https://www.home-assist
 
 ---
 
-> ### ⚠️ Momentary `v0.8.0-alpha` Notice
+> ### 🚀 Momentary `v0.8.0-beta.1` Notice
 >
 > **Momentary v0.8 modernizes the integration with native Home Assistant entity models, an interactive web-based Visual Device Editor, options flow webhook synchronization, and non-blocking asynchronous state storage.**
 >
-> **This is an active alpha release — community testing and feedback are welcome!**
+> **This is an active beta release — community testing and feedback are welcome!**
 >
-> Full release details and highlights can be found in the [v0.8.0-alpha.2 Release Notes](docs/RELEASE_NOTES_v0.8.0-alpha.2.md).
+> Full release details and highlights can be found in the [v0.8.0-beta.1 Release Notes](docs/RELEASE_NOTES_v0.8.0-beta.1.md).
 >
 > If you encounter issues, regressions, or unexpected behavior, please [open a GitHub issue](https://github.com/twrecked/hass-momentary/issues).
 

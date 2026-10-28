@@ -1,3 +1,9 @@
+0.8.0-beta.1:
+  promote v0.8 to beta pre-release
+  require minimum Home Assistant version 2026.7.0 in hacs.json
+  support probatio validation engine for modern Home Assistant versions
+  fix trailing whitespace and ruff formatting in editor template and config flow
+  modernize GitHub Actions workflows with updated action versions
 0.8.0-alpha.2:
   ensure integration displays in integrations dashboard by removing integration_type helper
   enable render_readme in hacs.json

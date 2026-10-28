@@ -37,7 +37,7 @@ from .const import (
     CONF_YAML_CONFIG,
 )
 
-__version__ = "0.8.0-alpha.2"
+__version__ = "0.8.0-beta.1"
 
 _LOGGER = logging.getLogger(__name__)
 
