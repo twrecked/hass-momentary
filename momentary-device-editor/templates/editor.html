@@ -90,9 +90,9 @@
           <!-- Card Header -->
           <div class="device-header">
             <div class="device-header-left">
-              <button 
-                class="chevron-btn" 
-                :class="{ 'is-collapsed': device.collapsed }" 
+              <button
+                class="chevron-btn"
+                :class="{ 'is-collapsed': device.collapsed }"
                 @click="toggleCollapse(device)"
                 :title="device.collapsed ? 'Expand device' : 'Collapse device'"
               >
@@ -100,9 +100,9 @@
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </button>
-              <input 
-                v-model="device.name" 
-                class="device-title-input" 
+              <input
+                v-model="device.name"
+                class="device-title-input"
                 placeholder="Switch / Device Name"
               />
               <span class="nav-badge" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">
@@ -129,9 +129,9 @@
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                   Switch {{ device.switches.length > 1 ? '#' + (sIdx + 1) : '' }}
                 </span>
-                <button 
-                  v-if="device.switches.length > 1" 
-                  class="btn btn-danger-outline btn-sm" 
+                <button
+                  v-if="device.switches.length > 1"
+                  class="btn btn-danger-outline btn-sm"
                   @click="removeSwitch(dIdx, sIdx)"
                   title="Remove this switch"
                 >
@@ -210,10 +210,10 @@
           <button class="chevron-btn" @click="showTemplateModal = false">✕</button>
         </div>
         <div class="modal-body">
-          <div 
-            v-for="tmpl in templates" 
-            :key="tmpl.id" 
-            class="template-card" 
+          <div
+            v-for="tmpl in templates"
+            :key="tmpl.id"
+            class="template-card"
             @click="applyTemplate(tmpl)"
           >
             <h3>{{ tmpl.name }}</h3>
@@ -237,10 +237,10 @@
           <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.85rem;">
             Paste your <code>momentary.yaml</code> file contents below to populate the visual cards:
           </p>
-          <textarea 
-            v-model="rawYamlInput" 
-            class="form-control" 
-            style="height: 250px; font-family: monospace; font-size: 0.85rem;" 
+          <textarea
+            v-model="rawYamlInput"
+            class="form-control"
+            style="height: 250px; font-family: monospace; font-size: 0.85rem;"
             placeholder="version: 1&#10;switches:&#10;  - name: my_switch&#10;    mode: 'on'&#10;    toggle_for: 1&#10;    cancellable: false"
           ></textarea>
         </div>
