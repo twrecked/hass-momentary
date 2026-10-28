@@ -122,9 +122,7 @@ class MomentaryConfigFlow(config_entries.ConfigFlow, domain=COMPONENT_DOMAIN):
 class MomentaryOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Momentary integration."""
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage options step for opening the visual editor."""
         entry = self.config_entry
         editor_url = entry.options.get(CONF_EDITOR_URL, DEFAULT_EDITOR_URL)
@@ -167,7 +165,9 @@ class MomentaryOptionsFlowHandler(config_entries.OptionsFlow):
             webhook_url = f"/api/webhook/{webhook_id}"
 
         cb_param = (
-            f"{webhook_url}?token={token}" if "?" not in webhook_url else f"{webhook_url}&token={token}"
+            f"{webhook_url}?token={token}"
+            if "?" not in webhook_url
+            else f"{webhook_url}&token={token}"
         )
 
         encoded_yaml = base64.b64encode(yaml_content.encode()).decode("ascii")
