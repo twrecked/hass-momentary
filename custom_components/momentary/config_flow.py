@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-import voluptuous as vol
+try:
+    import probatio as vol
+except ImportError:
+    import voluptuous as vol  # type: ignore[no-redef]
 
 from homeassistant import config_entries, exceptions
 from homeassistant.components import webhook
