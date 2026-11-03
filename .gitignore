@@ -111,5 +111,6 @@ venv.bak/
 *.diff
 .idea
 prompt.md
-AGENTS.md
+AGENTS*.md
+update-repo*
 venv-*/

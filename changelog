@@ -1,3 +1,9 @@
+0.8.0-beta.2:
+  reorganize repository scripts under scripts/ directory
+  relocate install script to scripts/install with dynamic repository root resolution
+  add publish-release script with branch detection and pre-release support
+  update local agent testing instructions and repository ignore patterns
+  final beta pre-release stabilization before v0.8.0 general release
 0.8.0-beta.1:
   promote v0.8 to beta pre-release
   require minimum Home Assistant version 2026.7.0 in hacs.json
