@@ -297,12 +297,12 @@ async def _async_get_or_create_momentary_device_in_registry(
 
 
 async def _async_delete_momentary_device_from_registry(
-    hass: HomeAssistant, _entry: ConfigEntry, device_id: str, _name: str
+    hass: HomeAssistant, entry: ConfigEntry, device_id: str, _name: str
 ) -> None:
     device_registry = dr.async_get(hass)
     ident = (COMPONENT_DOMAIN, device_id)
     if hasattr(device_registry, "async_get_device_by_identifier"):
-        device = device_registry.async_get_device_by_identifier(ident)
+        device = device_registry.async_get_device_by_identifier(ident, entry.entry_id)
     else:
         device = device_registry.async_get_device(identifiers={ident})
     if device:
