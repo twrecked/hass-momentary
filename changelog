@@ -1,4 +1,10 @@
 0.8.0-beta.2:
+  correlate entities and devices directly against Home Assistant registries in BlendedCfg
+  deprecate momentary.meta.json and eliminate sidecar storage dependency
+  generate clean deterministic unique IDs for new switches and devices
+  automatically remove orphaned devices and entities no longer present in YAML config
+  fix deprecated async_get_device call using async_get_device_by_identifier
+  add system architecture documentation (docs/ARCHITECTURE.md)
   reorganize repository scripts under scripts/ directory
   relocate install script to scripts/install with dynamic repository root resolution
   add publish-release script with branch detection and pre-release support

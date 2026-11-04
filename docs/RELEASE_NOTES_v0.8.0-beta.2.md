@@ -11,7 +11,17 @@
 
 ## 🌟 What's New in v0.8.0-beta.2
 
-### 1. Developer Tooling & Repository Structure
+### 1. Registry-First Identity Resolution & Deprecation of `meta.json`
+- **Native HA Registry Matching in `BlendedCfg`**: Entity and device identities are correlated directly against Home Assistant's `device_registry` and `entity_registry` by config entry ID (`entry_id`).
+- **Elimination of Sidecar Storage (`momentary.meta.json`)**: Preserves existing registered unique IDs without requiring storage files. `.storage/momentary.meta.json` is no longer written to and is safe to remove.
+- **Deterministic ID Generation**:
+  - Multi-entity devices generate `switch.{switch_slug}` (or `switch.momentary_{switch_slug}` with `+`) and `{dev_slug}_{switch_slug}.momentary` unique IDs.
+  - Standalone switches generate `switch.{dev_slug}` (or `switch.momentary_{dev_slug}` with `+`) and `{dev_slug}.momentary` unique IDs.
+- **Self-Cleaning Orphan Removal**: Automatically prunes unreferenced devices and entities from Home Assistant's registries when removed from YAML.
+- **Deprecated Device Lookup**: Replaced deprecated `device_registry.async_get_device` with `async_get_device_by_identifier`.
+- **System Architecture Documentation**: Added complete architectural and lifecycle documentation in [`docs/ARCHITECTURE.md`](ARCHITECTURE.md).
+
+### 2. Developer Tooling & Repository Structure
 - **Scripts Directory Reorganization**: Relocated repository utility scripts into a clean `scripts/` directory to declutter the repository root and align with sibling integrations (`hass-pwrstat`, `hass-phantom-power`).
 - **Modernized Installation Script (`scripts/install`)**:
   - Dynamically calculates the repository root directory regardless of current working directory.
@@ -26,7 +36,7 @@
   - Updated `.gitignore` patterns to match `AGENTS*.md` and ignore deprecated release scripts (`update-repo*`).
   - Updated `AGENTS.local.md` instructions with the new `./scripts/install` commands.
 
-### 2. Prior v0.8 Highlights
+### 3. Prior v0.8 Highlights
 - **Interactive Visual Device Editor**: Card-based builder for visual switch configuration, hosted online or locally, with one-click webhook synchronization back into Home Assistant.
 - **Modern Validation Engine Compatibility**: Full support for Home Assistant's `probatio` validation engine with fallback to `voluptuous`.
 - **Async & Lifecycle Resilience**: Synchronous `@callback` event handling, leak-free timer replacement upon rapid re-triggering, and timezone-aware UTC state restoration.

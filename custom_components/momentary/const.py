@@ -45,5 +45,10 @@ def default_config_file(hass: HomeAssistant) -> str:
 
 
 def default_meta_file(hass: HomeAssistant) -> str:
-    """Return the default path to the integration meta storage file."""
+    """Return the default path to the integration meta storage file.
+
+    .. deprecated:: 0.8.0
+        Legacy metadata storage path. Identities are now correlated directly
+        with Home Assistant device and entity registries.
+    """
     return hass.config.path(".storage/momentary.meta.json")

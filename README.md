@@ -22,6 +22,7 @@ _Momentary_ is a custom integration for [Home Assistant](https://www.home-assist
 
 - [Introduction](#introduction)
 - [What's New in v0.8](#whats-new-in-v08)
+- [Architecture & System Design](#architecture--system-design)
 - [Installation](#installation)
   - [HACS (Recommended)](#hacs-recommended)
   - [Manual Installation](#manual-installation)
@@ -51,8 +52,15 @@ All state transitions are driven locally in memory (`local_push`) and persist cl
 
 - **Visual Device Editor**: A web-based visual card builder hosted on Google App Engine ([https://momentary-dot-twrecked-tools.nn.r.appspot.com](https://momentary-dot-twrecked-tools.nn.r.appspot.com)) or run locally.
 - **Webhook Sync**: Open the editor directly from the Home Assistant UI via **Configure** to edit switches visually and save them straight back into your configuration file.
+- **Native Registry Reconciliation & Deprecation of `meta.json`**: Entity and device identities are correlated directly against Home Assistant's native registries (`device_registry` and `entity_registry`), eliminating reliance on `.storage/momentary.meta.json`. Generates clean deterministic unique IDs for new switches and automatically purges orphaned devices and entities on reload.
 - **Async & Lifecycle Hardening**: Fully asynchronous executor-backed atomic file writes, elimination of unapproved third-party dependencies (`aiofiles`), and strict timer lifecycle teardown.
 - **Resilient State Persistence**: Timezone-safe state restoration that prevents crashes on missing attributes or Home Assistant restarts mid-countdown.
+
+---
+
+# Architecture & System Design
+
+For an in-depth look at integration lifecycle, coordinator design, entity naming and ID resolution, state restoration mechanics, and self-cleaning registries, see [System Architecture](docs/ARCHITECTURE.md).
 
 ---
 
