@@ -76,3 +76,24 @@ When investigating user-reported issues:
     logs:
       custom_components.momentary: debug
   ```
+
+---
+
+## 4. Local Testing & Deployment Workflow
+
+### A. Local Home Assistant Environment
+- **Configuration Directory:** `/home/steve/29acacia/site/home-assistant`
+- **Active Log File:** `/home/steve/29acacia/site/home-assistant/home-assistant.log`
+- **Configuration File:** `/home/steve/29acacia/site/home-assistant/momentary.yaml`
+
+### B. Deploying Code Changes (`./scripts/install`)
+- Always use the repository's `./scripts/install` script to sync changes into the test environment.
+- **Dry Run (Preview):**
+  ```bash
+  ./scripts/install /home/steve/29acacia/site/home-assistant
+  ```
+- **Execute Sync:**
+  ```bash
+  ./scripts/install go /home/steve/29acacia/site/home-assistant
+  ```
+- Use `./scripts/install go` to ensure Python files, translations, and services sync cleanly without copying `__pycache__` artifacts.

@@ -1,7 +1,7 @@
 """Provide helper utilities for the momentary integration.
 
-This module manages loading and saving user and meta configuration for the
-momentary integration.
+This module manages loading user configuration and coordinating device and switch
+identities with Home Assistant's native registries.
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ import uuid
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME, CONF_NAME, CONF_PLATFORM, Platform
 from homeassistant.core import HomeAssistant
+import homeassistant.helpers.device_registry as dr
+import homeassistant.helpers.entity_registry as er
 from homeassistant.util import slugify
 from homeassistant.util.yaml import dump, parse_yaml
 
@@ -103,7 +105,7 @@ async def _async_save_yaml(hass: HomeAssistant, file_name: str, data: dict[str, 
 async def _load_meta_data(
     hass: HomeAssistant, group_name: str
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Read stored meta data for a given group.
+    """Read stored meta data for a given group (legacy fallback).
 
     Returns a tuple of (devices_meta, switches_meta) for the group.
     """
@@ -121,18 +123,16 @@ async def _save_meta_data(
     device_meta_data: dict[str, Any],
     group_switches: dict[str, Any],
 ) -> None:
-    """Save meta data for a particular group name.
+    """Save meta data for a particular group name (legacy helper).
 
     This updates the stored .storage file atomically while holding an
     asyncio lock to prevent concurrent writes.
     """
     async with _meta_lock:
-        # Read in current meta data
         meta_data = await _async_load_json(hass, default_meta_file(hass))
         devices = meta_data.get(ATTR_DEVICES, {})
         switches = meta_data.get(ATTR_SWITCHES, {})
 
-        # Update (or add) the group piece.
         _LOGGER.debug("device meta before %s", devices)
         _LOGGER.debug("switch meta before %s", switches)
         switches.update({group_name: group_switches})
@@ -150,12 +150,10 @@ async def _save_meta_data(
 async def _delete_meta_data(hass: HomeAssistant, group_name: str) -> None:
     """Delete meta data for a particular group name from storage."""
     async with _meta_lock:
-        # Read in current meta data
         meta_data = await _async_load_json(hass, default_meta_file(hass))
         devices = meta_data.get(ATTR_DEVICES, {})
         switches = meta_data.get(ATTR_SWITCHES, {})
 
-        # Remove the group.
         _LOGGER.debug("devices meta before %s", devices)
         _LOGGER.debug("switches meta before %s", switches)
         devices.pop(group_name, None)
@@ -231,19 +229,64 @@ def _make_device_id(name: str) -> str:
     return f"{slugify(_make_name(name))}"
 
 
+def _find_matching_device(
+    device_name: str,
+    clean_device_name: str,
+    dev_slug: str,
+    existing_devs: list[dr.DeviceEntry] | None,
+) -> dr.DeviceEntry | None:
+    """Find an existing device in the device registry."""
+    if not existing_devs:
+        return None
+    target_idents = {
+        (COMPONENT_DOMAIN, device_name),
+        (COMPONENT_DOMAIN, dev_slug),
+    }
+    target_names = {clean_device_name, device_name}
+    for d in existing_devs:
+        if any(ident in target_idents for ident in d.identifiers) or d.name in target_names:
+            return d
+    return None
+
+
+def _find_matching_entity(
+    name: str,
+    clean_name: str,
+    dev_entities: list[er.RegistryEntry],
+    existing_ents: list[er.RegistryEntry] | None,
+    clean_device_name: str,
+    device_name: str,
+    is_group: bool,
+) -> er.RegistryEntry | None:
+    """Find an existing switch entity in the entity registry."""
+    target_names = {clean_name, name}
+    if not is_group:
+        target_names.update({clean_device_name, device_name})
+
+    for e in dev_entities:
+        if e.domain == Platform.SWITCH and e.original_name in target_names:
+            return e
+
+    if existing_ents:
+        switch_names = {clean_name, name}
+        for e in existing_ents:
+            if e.domain == Platform.SWITCH and e.original_name in switch_names:
+                return e
+
+    return None
+
+
 class BlendedCfg:
-    """Manage the momentary switch database.
+    """Manage the momentary switch configuration and registry coordination.
 
-    We have 2 data points:
-    - default_config_file(self.hass); where the user configures their switches, we create
-      this the first time the config flow code is run
-    - default_meta_file(hass); where we map the user entries to their unique ids
-
-    When we load we match the user list against our meta list and update
-    entries as needed.
+    Acts as an in-memory hardware bridge and coordinator for a momentary configuration file.
+    Loads and parses YAML device definitions, resolves entity IDs and unique IDs against
+    Home Assistant's native registries, and supplies structured device and switch payloads to setup.
     """
 
-    def __init__(self, hass: HomeAssistant, group_name: str, file: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, group_name: str, file: str, entry_id: str | None = None
+    ) -> None:
         """Initialize a blended configuration helper.
 
         Parameters
@@ -254,11 +297,14 @@ class BlendedCfg:
             The config entry group name.
         file : str
             Path to the user YAML config file.
+        entry_id : str | None
+            The config entry ID.
 
         """
         self._hass = hass
         self._group_name = group_name
         self._switches_file = file
+        self._entry_id = entry_id
         self._changed: bool = False
 
         self._devices: dict[str, Any] = {}
@@ -270,58 +316,106 @@ class BlendedCfg:
         self._smeta_data: dict[str, Any] = {}
         self._smeta_data_in: dict[str, Any] = {}
 
-    def _parse_switches(self, device_name: str, switches: list[Any]) -> None:
-        # Look up the device ID. If we don't have one we create it now.
-        device_id = self._dmeta_data_in.get(device_name, {}).get(ATTR_DEVICE_ID, None)
+    def _parse_switches(
+        self,
+        device_name: str,
+        switches: list[Any],
+        existing_devs: list[dr.DeviceEntry] | None = None,
+        existing_ents: list[er.RegistryEntry] | None = None,
+        is_group: bool = False,
+    ) -> None:
+        clean_device_name = _make_name(device_name)
+        dev_slug = slugify(clean_device_name)
+
+        matched_dev = _find_matching_device(device_name, clean_device_name, dev_slug, existing_devs)
+
+        device_id: str | None = None
+        if matched_dev:
+            for domain, ident in matched_dev.identifiers:
+                if domain == COMPONENT_DOMAIN:
+                    device_id = ident
+                    break
+
         if device_id is None:
-            _LOGGER.debug("adding '%s' to the list of devices", device_name)
-            device_id = _make_unique_id()
-            self._dmeta_data_in.update({device_name: {ATTR_DEVICE_ID: device_id}})
-            self._changed = True
+            # Check legacy meta_data (e.g. from momentary.meta.json)
+            device_id = self._dmeta_data_in.get(device_name, {}).get(ATTR_DEVICE_ID, None)
 
-        # Update the device list and active device meta data.
+        if device_id is None:
+            # Deterministic device_id
+            device_id = dev_slug
+
         _LOGGER.debug("working with device %s/%s", device_name, device_id)
-        self._devices.update({device_id: _make_name(device_name)})
-        self._dmeta_data.update({device_name: self._dmeta_data_in[device_name]})
+        self._devices[device_id] = clean_device_name
+        self._dmeta_data[device_name] = {ATTR_DEVICE_ID: device_id}
 
-        # Now attach each switch to a device.
+        dev_entities = (
+            [e for e in existing_ents if e.device_id == matched_dev.id]
+            if matched_dev and existing_ents
+            else []
+        )
+
+        # Attach each switch to the device
         for switch in switches:
             if not isinstance(switch, dict) or ATTR_NAME not in switch:
                 continue
 
             name = switch[ATTR_NAME]
+            clean_name = _make_name(name)
+            switch_slug = slugify(clean_name)
 
-            # If there isn't a unique_id we create one. This usually means
-            # the user added a new switch to the array.
-            unique_id = self._smeta_data_in.get(name, {}).get(ATTR_UNIQUE_ID, None)
+            matched_ent = _find_matching_entity(
+                name,
+                clean_name,
+                dev_entities,
+                existing_ents,
+                clean_device_name,
+                device_name,
+                is_group,
+            )
+
+            unique_id: str | None = None
+            entity_id: str | None = None
+
+            if matched_ent:
+                unique_id = matched_ent.unique_id
+                entity_id = matched_ent.entity_id
+
+            # 2. Fall back to legacy meta_data candidate keys
             if unique_id is None:
-                _LOGGER.debug("adding %s to the list of entities", name)
-                unique_id = _make_unique_id()
-                self._smeta_data_in.update(
-                    {
-                        name: {
-                            ATTR_UNIQUE_ID: unique_id,
-                            ATTR_ENTITY_ID: _make_entity_id(str(Platform.SWITCH), name),
-                        }
-                    }
-                )
-                self._changed = True
+                meta_entry = self._smeta_data_in.get(name) or self._smeta_data_in.get(clean_name)
+                if meta_entry:
+                    unique_id = meta_entry.get(ATTR_UNIQUE_ID)
+                    entity_id = meta_entry.get(ATTR_ENTITY_ID)
 
-            # Now copy over the entity id of the device.
-            entity_id = self._smeta_data_in.get(name, {}).get(ATTR_ENTITY_ID, None)
+            # 3. Deterministic IDs for new entities
+            if unique_id is None:
+                if is_group:
+                    unique_id = f"{dev_slug}_{switch_slug}.{COMPONENT_DOMAIN}"
+                    entity_id = _make_entity_id(str(Platform.SWITCH), name)
+                else:
+                    unique_id = f"{dev_slug}.{COMPONENT_DOMAIN}"
+                    entity_id = _make_entity_id(str(Platform.SWITCH), device_name or name)
+
             if entity_id is None:
                 _LOGGER.info("problem creating %s, no entity id", name)
                 continue
 
-            # Finalize the switch values - add in fixed pieces and update
-            # the dictionary, note down the meta data is still active.
+            self._smeta_data[name] = {
+                ATTR_UNIQUE_ID: unique_id,
+                ATTR_ENTITY_ID: entity_id,
+            }
+
             _LOGGER.debug("working with entity %s/%s", name, entity_id)
             switch.update(
-                {ATTR_DEVICE_ID: device_id, ATTR_ENTITY_ID: entity_id, ATTR_NAME: _make_name(name)}
+                {
+                    ATTR_DEVICE_ID: device_id,
+                    ATTR_ENTITY_ID: entity_id,
+                    ATTR_NAME: clean_name,
+                }
             )
-            self._switches.update({unique_id: switch})
+            self._switches[unique_id] = switch
             if name in self._smeta_data_in:
-                self._smeta_data.update({name: self._smeta_data_in.pop(name)})
+                self._smeta_data_in.pop(name)
 
     async def async_load(self) -> None:
         """Load switches from the database.
@@ -329,7 +423,7 @@ class BlendedCfg:
         They are stored as array because it makes it easier for the user to
         add to the list - they don't need to worry about dictionary key
         clashes - so we have to convert it here. As part of the conversion
-        we will fix up new entries.
+        we resolve identities against Home Assistant native registries.
         """
         try:
             self._devices = {}
@@ -338,40 +432,57 @@ class BlendedCfg:
             self._switches = {}
             self._smeta_data = {}
 
-            # Read in the known meta data.
+            # Read in known meta data (legacy fallback)
             self._dmeta_data_in, self._smeta_data_in = await _load_meta_data(
                 self._hass, self._group_name
             )
 
-            # Parse out the user data.
+            # Check Home Assistant native registries for existing devices/entities
+            dev_reg = dr.async_get(self._hass)
+            ent_reg = er.async_get(self._hass)
+
+            existing_devs: list[dr.DeviceEntry] = []
+            existing_ents: list[er.RegistryEntry] = []
+            if self._entry_id:
+                existing_devs = dr.async_entries_for_config_entry(dev_reg, self._entry_id)
+                existing_ents = er.async_entries_for_config_entry(ent_reg, self._entry_id)
+
+            # Parse out the user data
             for device_or_switch in await _load_user_data(self._hass, self._switches_file):
                 if isinstance(device_or_switch, dict):
                     if CONF_NAME in device_or_switch:
                         device_name = str(device_or_switch[CONF_NAME])
-                        self._parse_switches(device_name, [device_or_switch])
+                        self._parse_switches(
+                            device_name,
+                            [device_or_switch],
+                            existing_devs=existing_devs,
+                            existing_ents=existing_ents,
+                            is_group=False,
+                        )
                     else:
                         device_name = list(device_or_switch.keys())[0]
                         children = device_or_switch[device_name]
                         if isinstance(children, list):
-                            self._parse_switches(device_name, children)
+                            self._parse_switches(
+                                device_name,
+                                children,
+                                existing_devs=existing_devs,
+                                existing_ents=existing_ents,
+                                is_group=True,
+                            )
                 else:
                     _LOGGER.info("malformed device or group: %s", device_or_switch)
 
-            # Create orphaned list.
+            # Build orphaned_devices from legacy meta for backward compatibility if needed
             for device_name, values in self._dmeta_data_in.items():
                 if device_name in self._dmeta_data:
                     _LOGGER.debug("still using %s", device_name)
                     continue
                 _LOGGER.debug("don't need %s", device_name)
-                self._orphaned_devices.update({values[ATTR_DEVICE_ID]: device_name})
-                self._changed = True
+                self._orphaned_devices[values[ATTR_DEVICE_ID]] = device_name
 
-            # Make sure changes are kept.
-            if self._changed:
-                await _save_meta_data(
-                    self._hass, self._group_name, self._dmeta_data, self._smeta_data
-                )
-                self._changed = False
+            # Note: We do not write to .storage/momentary.meta.json anymore,
+            # as native HA registries now manage persistence.
 
             self.dump()
 

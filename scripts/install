@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if [[ "${1}" == "go" ]]; then
 	ECHO=
@@ -18,12 +22,14 @@ if [[ ! -d "${DEST}" ]]; then
 fi
 
 if [[ -n "${ECHO}" ]]; then
-	echo "**** would run the following commands, use './install go $1' to do the work"
+	echo "**** would run the following commands, use './scripts/install go $1' to do the work"
 fi
+
+cd "${REPO_ROOT}" || exit 1
 
 ${ECHO} mkdir -p "${DEST}/custom_components"
 if [[ -n $(command -v fd) ]]; then
-	fd -e py -e json . custom_components --exec ${ECHO} cp -vf --parents {} "${DEST}" ;
+	fd -e py -e json -e yaml . custom_components --exec ${ECHO} cp -vf --parents {} "${DEST}" ;
 else
 	${ECHO} cp -afv custom_components/momentary "${DEST}/custom_components"
 fi
