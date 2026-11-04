@@ -25,7 +25,7 @@ if [[ -n "${ECHO}" ]]; then
 	echo "**** would run the following commands, use './scripts/install go $1' to do the work"
 fi
 
-cd "${REPO_ROOT}"
+cd "${REPO_ROOT}" || exit 1
 
 ${ECHO} mkdir -p "${DEST}/custom_components"
 if [[ -n $(command -v fd) ]]; then
